@@ -6,8 +6,9 @@ instant digital ticket pass, or host your own event in a couple of clicks.
 
 A React (Vite) frontend talks to an Express + MongoDB (Mongoose) backend.
 
-> 📄 **System Architecture & Design Docs**: 
-> - 📐 [**High-Level Design (HLD)**](./HLD.md) — System Architecture, Component Layers, Data Flow & Sequence Diagrams, NFRs
+> 📄 **System Architecture & Product Docs**: 
+> - 📋 [**Product Requirements Document (PRD)**](./PRD.md) — Product Vision, Personas, Functional & Non-Functional Requirements
+> - 📐 [**High-Level Design (HLD)**](./HLD.md) — System Architecture, Component Layers, Data Flow & Sequence Diagrams
 > - 🛠️ [**Low-Level Design (LLD)**](./LLD.md) — Database ER Schema, Module Breakdown, API Contracts & Core Algorithms
 
 ## Project structure
@@ -15,6 +16,7 @@ A React (Vite) frontend talks to an Express + MongoDB (Mongoose) backend.
 ```
 Client/     React 19 + Vite frontend
 server/     Express + Mongoose backend API
+PRD.md      Product Requirements Document
 HLD.md      High-Level Design Document
 LLD.md      Low-Level Design Document
 render.yaml Render blueprint for deploying the backend
