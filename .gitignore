@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+Client/node_modules/
+server/node_modules/
+
+# Build output
+Client/dist/
+Client/dist-ssr/
+
+# Environment variables (never commit real secrets)
+.env
+.env.local
+.env.*.local
+Client/.env
+Client/.env.local
+server/.env
+
+# Logs
+*.log
+npm-debug.log*
+logs/
+
+# Editor / OS
+.DS_Store
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

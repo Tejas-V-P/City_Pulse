@@ -1,0 +1,24 @@
+.text-type {
+  display: inline-block;
+  white-space: pre-wrap;
+  font-family: 'Playfair Display', Georgia, serif;
+  font-style: italic;
+}
+
+.text-type__content {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-style: italic;
+}
+
+.text-type__cursor {
+  margin-left: 0.25rem;
+  display: inline-block;
+  opacity: 1;
+  font-family: 'Playfair Display', Georgia, serif !important;
+  font-style: italic !important;
+  transform: skewX(-14deg);
+}
+
+.text-type__cursor--hidden {
+  display: none;
+}

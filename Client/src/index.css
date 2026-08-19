@@ -1,0 +1,234 @@
+/* =============================================================================
+   CITY PULSE — Design tokens
+   Concept: the city has a living rhythm. Sodium-lamp amber (signal) against
+   neon-signage cyan (pulse) on a deep ink-blue night backdrop, with a
+   heartbeat/waveform motif ("the pulse") used for live indicators & dividers.
+   ============================================================================= */
+:root {
+  --font-heading: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+
+  /* Surfaces — deep ink, night-city backdrop */
+  --bg-dark: #0a0c12;
+  --bg-card: rgba(19, 21, 30, 0.78);
+  --bg-card-hover: rgba(27, 30, 42, 0.88);
+  --bg-glass: rgba(14, 16, 23, 0.68);
+  --bg-input: rgba(27, 30, 42, 0.65);
+
+  /* Signal — sodium-lamp amber (primary) */
+  --accent-primary: #ffb020;
+  --accent-primary-dim: #e8940a;
+  --accent-secondary: #c97a00;
+  --accent-gradient: linear-gradient(135deg, #e8940a 0%, #ffb020 55%, #ffc85c 100%);
+  --accent-glow: rgba(255, 176, 32, 0.35);
+
+  /* Pulse — neon-signage cyan (secondary / interactive) */
+  --pulse: #4de8d0;
+  --pulse-dim: #2fb9a4;
+  --pulse-glow: rgba(77, 232, 208, 0.35);
+
+  /* Live — heartbeat red, used only for "happening now" */
+  --live: #ff4d5e;
+  --live-glow: rgba(255, 77, 94, 0.4);
+
+  --text-main: #f5f3ee;
+  --text-muted: #9a9ca8;
+  --text-dim: #686b78;
+
+  --border-light: rgba(255, 255, 255, 0.09);
+  --border-glow: rgba(255, 176, 32, 0.35);
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+
+  --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.55), 0 8px 10px -6px rgba(0, 0, 0, 0.35);
+  --shadow-glow: 0 0 25px rgba(255, 176, 32, 0.2);
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-body);
+}
+
+body {
+  background-color: var(--bg-dark);
+  background-image:
+    radial-gradient(at 8% 0%, rgba(255, 176, 32, 0.14) 0px, transparent 50%),
+    radial-gradient(at 100% 10%, rgba(77, 232, 208, 0.1) 0px, transparent 50%),
+    radial-gradient(at 50% 100%, rgba(255, 176, 32, 0.05) 0px, transparent 50%);
+  background-attachment: fixed;
+  color: var(--text-main);
+  min-height: 100vh;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: -0.02em;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  cursor: pointer;
+  font-family: var(--font-body);
+  border: none;
+  outline: none;
+  transition: all 0.25s ease;
+}
+
+input, select, textarea {
+  font-family: var(--font-body);
+  color: var(--text-main);
+  background: var(--bg-input);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 1rem;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(255, 176, 32, 0.2);
+}
+
+/* Visible keyboard focus everywhere, incl. non-form interactive elements */
+a:focus-visible,
+button:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--pulse);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Data-flavored utility text: dates, times, ticket codes, counts */
+.mono {
+  font-family: var(--font-mono);
+  letter-spacing: -0.01em;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #0d0f16;
+}
+::-webkit-scrollbar-thumb {
+  background: #2c2f3d;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3d4152;
+}
+
+/* Utility Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.fade-in {
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* -----------------------------------------------------------------------
+   Signature motif: the heartbeat/waveform "pulse line"
+   Used as a divider under the navbar, in hero sections, and to power the
+   "LIVE today" badge on event cards. Draws itself in once on load.
+   ----------------------------------------------------------------------- */
+.pulse-line {
+  display: block;
+  width: 100%;
+  height: 22px;
+  overflow: visible;
+}
+
+.pulse-line path {
+  fill: none;
+  stroke: var(--accent-primary);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.55;
+  stroke-dasharray: 340;
+  stroke-dashoffset: 340;
+  animation: pulseDraw 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes pulseDraw {
+  to { stroke-dashoffset: 0; }
+}
+
+.pulse-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(255, 77, 94, 0.15);
+  border: 1px solid rgba(255, 77, 94, 0.45);
+  color: #ff8a94;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+}
+
+.pulse-badge svg {
+  width: 20px;
+  height: 12px;
+  overflow: visible;
+}
+
+.pulse-badge path {
+  fill: none;
+  stroke: var(--live);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pulse-badge .pulse-beat {
+  animation: pulseGlow 1.1s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-in,
+  .pulse-line path,
+  .pulse-badge .pulse-beat {
+    animation: none !important;
+  }
+  .pulse-line path {
+    stroke-dashoffset: 0;
+  }
+  * {
+    transition-duration: 0.01ms !important;
+  }
+}
