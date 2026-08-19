@@ -1,0 +1,119 @@
+.tag-filter-bar {
+  background: rgba(19, 21, 30, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 2.2rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.tag-filter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.filter-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.filter-icon {
+  font-size: 1.1rem;
+}
+
+.filter-heading {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #cbd5e1;
+  letter-spacing: 0.03em;
+  margin: 0;
+}
+
+.active-count-badge {
+  background: rgba(255, 176, 32, 0.25);
+  color: #7feee0;
+  border: 1px solid rgba(255, 176, 32, 0.5);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+}
+
+.btn-clear-tags {
+  background: rgba(255, 77, 94, 0.12);
+  color: #ff8a94;
+  border: 1px solid rgba(255, 77, 94, 0.35);
+  padding: 0.35rem 0.85rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-clear-tags:hover {
+  background: var(--live);
+  color: #ffffff;
+  border-color: var(--live);
+  box-shadow: 0 0 12px rgba(255, 77, 94, 0.4);
+}
+
+.categories-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem;
+}
+
+.category-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.category-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.tag-pills-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.tag-pill-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  padding: 0.38rem 0.75rem;
+  border-radius: 16px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tag-pill-btn:hover {
+  background: rgba(255, 176, 32, 0.2);
+  border-color: rgba(255, 176, 32, 0.6);
+  color: #e2e8f0;
+  transform: translateY(-1px);
+}
+
+.tag-pill-btn.active {
+  background: linear-gradient(135deg, #ffb020 0%, #4de8d0 100%);
+  border-color: #34c9b4;
+  color: #14100a;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(255, 176, 32, 0.4);
+}
