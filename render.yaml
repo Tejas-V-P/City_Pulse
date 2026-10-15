@@ -1,0 +1,27 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# In the Render dashboard: New -> Blueprint -> point at this repo, and Render
+# will pick up this file automatically. Alternatively create the Web Service
+# manually with Root Directory = server, Build Command = npm install,
+# Start Command = npm start.
+services:
+  - type: web
+    name: city-pulse-api
+    runtime: node
+    plan: free
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: MONGO_URI
+        sync: false
+      - key: CLIENT_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: LLM_PROVIDER
+        value: gemini
