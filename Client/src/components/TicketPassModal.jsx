@@ -34,15 +34,15 @@ export default function TicketPassModal({ registration, event, onClose }) {
               </div>
               <div className="ticket-detail-item">
                 <h6>City / Venue</h6>
-                <p>{event.city}</p>
+                <p>{event.city || 'San Francisco'}</p>
               </div>
               <div className="ticket-detail-item">
                 <h6>Date</h6>
-                <p>{event.date}</p>
+                <p>{event.date || event.eventDate || 'Upcoming'}</p>
               </div>
               <div className="ticket-detail-item">
                 <h6>Time</h6>
-                <p>{event.time}</p>
+                <p>{event.time || '10:00 AM'}</p>
               </div>
             </div>
 

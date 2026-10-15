@@ -5,21 +5,21 @@ export const getEvents = (filters = {}) => {
   let result = [...events];
 
   if (filters.city && filters.city !== 'All Cities') {
-    result = result.filter(e => e.city.toLowerCase() === filters.city.toLowerCase());
+    result = result.filter(e => e.city && e.city.toLowerCase() === filters.city.toLowerCase());
   }
 
   if (filters.category && filters.category !== 'All') {
-    result = result.filter(e => e.category.toLowerCase() === filters.category.toLowerCase());
+    result = result.filter(e => e.category && e.category.toLowerCase() === filters.category.toLowerCase());
   }
 
   if (filters.search) {
     const q = filters.search.toLowerCase();
     result = result.filter(e => 
-      e.title.toLowerCase().includes(q) ||
-      e.description.toLowerCase().includes(q) ||
-      e.venue.toLowerCase().includes(q) ||
-      e.city.toLowerCase().includes(q) ||
-      e.tagline.toLowerCase().includes(q)
+      (e.title && e.title.toLowerCase().includes(q)) ||
+      (e.description && e.description.toLowerCase().includes(q)) ||
+      (e.venue && e.venue.toLowerCase().includes(q)) ||
+      (e.city && e.city.toLowerCase().includes(q)) ||
+      (e.tagline && e.tagline.toLowerCase().includes(q))
     );
   }
 

@@ -223,15 +223,15 @@ export default function Dashboard({ currentUser }) {
                 <div key={evt.id} className="ticket-item-card">
                   <div className="ticket-item-header">
                     <div>
-                      <span className="event-category-badge">{evt.category}</span>
+                      <span className="event-category-badge">{evt.category || 'General'}</span>
                       <h4 style={{ fontSize: '1.15rem', marginTop: '0.3rem' }}>{evt.title}</h4>
                     </div>
                     <span className="event-price-badge">{evt.isFree ? 'FREE' : `$${evt.price}`}</span>
                   </div>
 
                   <div style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
-                    <p>📍 {evt.city} • {evt.venue}</p>
-                    <p>📅 {evt.date} ({evt.time})</p>
+                    <p>📍 {evt.city || 'San Francisco'} • {evt.venue || 'Tech Innovation Center'}</p>
+                    <p>📅 {evt.date || evt.eventDate || 'Upcoming'} ({evt.time || '10:00 AM'})</p>
                   </div>
 
                   <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-light)' }}>

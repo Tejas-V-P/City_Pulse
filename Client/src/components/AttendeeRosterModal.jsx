@@ -73,12 +73,12 @@ export default function AttendeeRosterModal({ event, onClose, onDeleteEvent }) {
 
         <div className="roster-modal-header">
           <div className="roster-header-meta">
-            <span className="event-category-badge">{event.category}</span>
-            <span className="event-city-tag">📍 {event.city}</span>
+            <span className="event-category-badge">{event.category || 'General'}</span>
+            <span className="event-city-tag">📍 {event.city || 'San Francisco'}</span>
           </div>
           <h3 className="roster-event-title">{event.title}</h3>
           <p className="roster-event-subtitle">
-            📅 {event.date} ({event.time}) • 🏢 {event.venue}
+            📅 {event.date || event.eventDate || 'Upcoming'} ({event.time || '10:00 AM'}) • 🏢 {event.venue || 'Tech Innovation Center'}
           </p>
         </div>
 

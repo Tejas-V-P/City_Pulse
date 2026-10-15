@@ -33,7 +33,26 @@ export const Event = mongoose.models.Event || mongoose.model('Event', eventSchem
 
 export const INITIAL_SEED_EVENTS = [];
 
-// Auto-seed function (No-op since seed data is removed)
+// Auto-normalize legacy events if any fields are missing
 export const seedMongoEvents = async () => {
-  // Clean initialization - database operates with real user-created data
+  try {
+    await Event.updateMany(
+      { $or: [{ city: { $exists: false } }, { city: null }, { city: '' }] },
+      { $set: { city: 'San Francisco' } }
+    );
+    await Event.updateMany(
+      { $or: [{ category: { $exists: false } }, { category: null }, { category: '' }] },
+      { $set: { category: 'Technology' } }
+    );
+    await Event.updateMany(
+      { $or: [{ venue: { $exists: false } }, { venue: null }, { venue: '' }] },
+      { $set: { venue: 'Tech Innovation Center' } }
+    );
+    await Event.updateMany(
+      { $or: [{ date: { $exists: false } }, { date: null }, { date: '' }] },
+      { $set: { date: '2026-10-20' } }
+    );
+  } catch (err) {
+    console.warn('Legacy events normalization note:', err.message);
+  }
 };

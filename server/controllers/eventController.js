@@ -63,7 +63,14 @@ export const getAllEvents = async (req, res) => {
         success: true,
         database: 'MongoDB Mongoose',
         count: eventsList.length,
-        data: eventsList.map(e => ({ ...e.toObject(), id: e._id.toString() }))
+        data: eventsList.map(e => ({
+          ...e.toObject(),
+          id: e._id.toString(),
+          city: e.city || 'San Francisco',
+          category: e.category || 'Technology',
+          venue: e.venue || 'Tech Innovation Center',
+          date: e.date || e.eventDate || new Date().toISOString().split('T')[0]
+        }))
       });
     }
 
@@ -96,7 +103,15 @@ export const getEventDetails = async (req, res) => {
         status: 200,
         success: true,
         database: 'MongoDB Mongoose',
-        data: { ...event.toObject(), id: event._id.toString(), attendeesCount }
+        data: {
+          ...event.toObject(),
+          id: event._id.toString(),
+          city: event.city || 'San Francisco',
+          category: event.category || 'Technology',
+          venue: event.venue || 'Tech Innovation Center',
+          date: event.date || event.eventDate || new Date().toISOString().split('T')[0],
+          attendeesCount
+        }
       });
     }
 
@@ -274,8 +289,15 @@ export const registerForEvent = async (req, res) => {
         });
       }
 
+      if (!event.city) event.city = 'San Francisco';
+      if (!event.category) event.category = 'Technology';
+      if (!event.venue) event.venue = 'Tech Innovation Center';
+      if (!event.date) event.date = event.eventDate || new Date().toISOString().split('T')[0];
+
       const randomNum = Math.floor(10000 + Math.random() * 90000);
-      const ticketCode = `TKT-${event.city.slice(0, 3).toUpperCase()}-${randomNum}`;
+      const cityStr = event.city || 'EVT';
+      const cityPrefix = (cityStr.length >= 3 ? cityStr.slice(0, 3) : cityStr).toUpperCase();
+      const ticketCode = `TKT-${cityPrefix}-${randomNum}`;
 
       const reg = await Registration.create({
         eventId: id,
@@ -286,7 +308,7 @@ export const registerForEvent = async (req, res) => {
       });
 
       // Increment registeredCount in MongoDB Event document
-      event.registeredCount += 1;
+      event.registeredCount = (event.registeredCount || 0) + 1;
       await event.save();
 
       return res.status(201).json({
@@ -296,7 +318,14 @@ export const registerForEvent = async (req, res) => {
         message: 'Registration created in MongoDB!',
         data: {
           registration: { ...reg.toObject(), id: reg._id.toString() },
-          event: { ...event.toObject(), id: event._id.toString() }
+          event: {
+            ...event.toObject(),
+            id: event._id.toString(),
+            city: event.city || 'San Francisco',
+            category: event.category || 'Technology',
+            venue: event.venue || 'Tech Innovation Center',
+            date: event.date || event.eventDate || new Date().toISOString().split('T')[0]
+          }
         }
       });
     }
@@ -305,7 +334,9 @@ export const registerForEvent = async (req, res) => {
     const event = getMemoryEventById(id);
     if (!event) return res.status(404).json({ status: 404, error: 'Event not found' });
 
-    const result = createMemoryRegistration({ ...req.body, eventId: id, cityCode: event.city.slice(0, 3).toUpperCase() });
+    const cityStr = event.city || 'EVT';
+    const cityCode = (cityStr.length >= 3 ? cityStr.slice(0, 3) : cityStr).toUpperCase();
+    const result = createMemoryRegistration({ ...req.body, eventId: id, cityCode });
     if (result.error) return res.status(400).json({ status: 400, error: result.error });
 
     res.status(201).json({
@@ -334,7 +365,16 @@ export const getUserRegistrations = async (req, res) => {
           return {
             ...reg.toObject(),
             id: reg._id.toString(),
-            event: event ? { ...event.toObject(), id: event._id.toString() } : null
+            event: event
+              ? {
+                  ...event.toObject(),
+                  id: event._id.toString(),
+                  city: event.city || 'San Francisco',
+                  category: event.category || 'Technology',
+                  venue: event.venue || 'Tech Innovation Center',
+                  date: event.date || event.eventDate || new Date().toISOString().split('T')[0]
+                }
+              : null
           };
         })
       );

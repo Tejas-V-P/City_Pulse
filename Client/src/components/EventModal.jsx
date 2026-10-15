@@ -107,7 +107,9 @@ export default function EventModal({ event, onClose, onRegisterSuccess, currentU
       onRegisterSuccess(data.data.registration, event);
     } catch (err) {
       // Fallback local registration if backend offline
-      const ticketCode = `TKT-${event.city.slice(0, 3).toUpperCase()}-${Math.floor(10000 + Math.random() * 90000)}`;
+      const cityStr = event.city || 'EVT';
+      const cityPrefix = (cityStr.length >= 3 ? cityStr.slice(0, 3) : cityStr).toUpperCase();
+      const ticketCode = `TKT-${cityPrefix}-${Math.floor(10000 + Math.random() * 90000)}`;
       const fallbackReg = {
         id: `reg-${Date.now()}`,
         eventId: event.id,
@@ -130,15 +132,15 @@ export default function EventModal({ event, onClose, onRegisterSuccess, currentU
         <button className="modal-close-btn" onClick={onClose}>✕</button>
 
         <div className="modal-banner">
-          <img src={event.image} alt={event.title} />
+          <img src={event.image || 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1000&q=80'} alt={event.title} />
           <div className="modal-banner-gradient"></div>
         </div>
 
         <div className="modal-body">
           <div className="modal-header-section">
             <div className="modal-tags-row">
-              <span className="event-category-badge">{event.category}</span>
-              <span className="event-city-tag">📍 {event.city}</span>
+              <span className="event-category-badge">{event.category || 'General'}</span>
+              <span className="event-city-tag">📍 {event.city || 'San Francisco'}</span>
               <span className={`event-price-badge ${event.isFree ? 'free' : ''}`}>
                 {event.isFree ? 'FREE ENTRY' : `$${event.price}`}
               </span>
@@ -153,8 +155,8 @@ export default function EventModal({ event, onClose, onRegisterSuccess, currentU
               <span className="info-icon">📅</span>
               <div className="info-details">
                 <h5>Date & Time</h5>
-                <p>{formatDate(event.date)}</p>
-                <p style={{ fontSize: '0.85rem', color: '#94a3b8' }}>{event.time}</p>
+                <p>{formatDate(event.date || event.eventDate)}</p>
+                <p style={{ fontSize: '0.85rem', color: '#94a3b8' }}>{event.time || '10:00 AM'}</p>
               </div>
             </div>
 
@@ -162,8 +164,8 @@ export default function EventModal({ event, onClose, onRegisterSuccess, currentU
               <span className="info-icon">🏢</span>
               <div className="info-details">
                 <h5>Location / Venue</h5>
-                <p>{event.venue}</p>
-                <p style={{ fontSize: '0.85rem', color: '#94a3b8' }}>{event.city}</p>
+                <p>{event.venue || 'Tech Innovation Center'}</p>
+                <p style={{ fontSize: '0.85rem', color: '#94a3b8' }}>{event.city || 'San Francisco'}</p>
               </div>
             </div>
 

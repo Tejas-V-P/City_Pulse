@@ -69,7 +69,7 @@ export default function EventExplorer({ currentUser }) {
   };
 
   // Dynamic statistics calculated directly from current events data
-  const totalCitiesCount = new Set(events.map(e => e.city)).size;
+  const totalCitiesCount = new Set(events.map(e => e.city).filter(Boolean)).size;
   const totalRegisteredCount = events.reduce((sum, e) => sum + (e.registeredCount || 0), 0);
 
   return (

@@ -24,7 +24,7 @@ export default function EventCard({ event, onViewDetails, onRegister }) {
           loading="lazy"
         />
         <div className="event-badges-overlay">
-          <span className="event-category-badge">{event.category}</span>
+          <span className="event-category-badge">{event.category || 'General'}</span>
           <span className={`event-price-badge ${event.isFree ? 'free' : ''}`}>
             {event.isFree ? 'FREE' : `$${event.price}`}
           </span>
@@ -33,7 +33,7 @@ export default function EventCard({ event, onViewDetails, onRegister }) {
 
       <div className="event-card-body">
         <div className="event-city-tag">
-          📍 {event.city}
+          📍 {event.city || 'San Francisco'}
         </div>
 
         <h4 className="event-card-title">{event.title}</h4>
@@ -52,11 +52,11 @@ export default function EventCard({ event, onViewDetails, onRegister }) {
         <div className="event-meta-info">
           <div className="event-meta-item">
             <span>📅</span>
-            <span>{formatDate(event.date)} • {event.time}</span>
+            <span>{formatDate(event.date || event.eventDate)} • {event.time || '10:00 AM'}</span>
           </div>
           <div className="event-meta-item">
             <span>🏢</span>
-            <span className="text-truncate">{event.venue}</span>
+            <span className="text-truncate">{event.venue || 'Tech Innovation Center'}</span>
           </div>
         </div>
 
