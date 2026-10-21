@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AIEventAssistantModal from './AIEventAssistantModal';
 import './CreateEventModal.css';
 
@@ -10,19 +11,26 @@ const SAMPLE_POSTERS = [
 ];
 
 export default function CreateEventModal({ onClose, onCreateSuccess, currentUser }) {
+  const navigate = useNavigate();
   const activeUser = currentUser || (() => {
     try {
-      return JSON.parse(localStorage.getItem('currentUser')) || {};
+      const saved = localStorage.getItem('currentUser');
+      return saved ? JSON.parse(saved) : null;
     } catch {
-      return {};
+      return null;
     }
   })();
+
+  const isUserLoggedIn = Boolean(
+    activeUser?.name ||
+    localStorage.getItem('isLoggedIn') === 'true'
+  );
 
   const [formData, setFormData] = useState({
     title: '',
     tagline: '',
     category: 'Technology',
-    city: activeUser.city || 'San Francisco',
+    city: activeUser?.city || 'San Francisco',
     venue: '',
     date: '',
     time: '10:00 AM - 04:00 PM',
@@ -32,8 +40,8 @@ export default function CreateEventModal({ onClose, onCreateSuccess, currentUser
     description: '',
     agenda: [],
     tags: ['#In-Person', '#Free', '#Community'],
-    organizerName: activeUser.name || 'Event Host',
-    organizerId: activeUser.id || activeUser.email || 'user-1'
+    organizerName: activeUser?.name || '',
+    organizerId: activeUser?.id || activeUser?._id || activeUser?.email || ''
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -113,6 +121,11 @@ export default function CreateEventModal({ onClose, onCreateSuccess, currentUser
     e.preventDefault();
     setErrorMsg('');
 
+    if (!isUserLoggedIn || !formData.organizerId) {
+      setErrorMsg('You must be signed in to create and publish events.');
+      return;
+    }
+
     if (!formData.title || !formData.city || !formData.venue || !formData.date) {
       setErrorMsg('Please fill out all required fields.');
       return;
@@ -129,13 +142,18 @@ export default function CreateEventModal({ onClose, onCreateSuccess, currentUser
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        setErrorMsg(data.error || 'Failed to create event');
+        setErrorMsg(data.message || data.error || 'Failed to create event');
         setIsSubmitting(false);
         return;
       }
 
       onCreateSuccess(data.data);
     } catch (err) {
+      if (!isUserLoggedIn || !formData.organizerId) {
+        setErrorMsg('You must be signed in to create and publish events.');
+        setIsSubmitting(false);
+        return;
+      }
       const localNewEvent = {
         id: `evt-${Date.now()}`,
         ...formData,
@@ -149,6 +167,57 @@ export default function CreateEventModal({ onClose, onCreateSuccess, currentUser
       setIsSubmitting(false);
     }
   };
+
+  if (!isUserLoggedIn) {
+    return (
+      <div className="modal-overlay" onClick={onClose}>
+        <div className="create-modal-content auth-guard-card fade-in" onClick={e => e.stopPropagation()}>
+          <button className="modal-close-btn" onClick={onClose}>✕</button>
+
+          <div className="auth-guard-body">
+            <div className="auth-guard-icon-bubble">👑</div>
+            <h3 className="auth-guard-title">Sign In Required to Host Events</h3>
+            <p className="auth-guard-subtitle">
+              You must have an active, signed-in account to publish events, manage attendee registrations, and issue tickets on City Pulse.
+            </p>
+
+            <div className="auth-guard-actions">
+              <button
+                type="button"
+                className="btn-auth-signin"
+                onClick={() => {
+                  onClose();
+                  navigate('/login', {
+                    state: {
+                      message: 'Please sign in or create an account to organize and publish events.',
+                      from: '/events?create=true'
+                    }
+                  });
+                }}
+              >
+                Sign In to Host
+              </button>
+              <button
+                type="button"
+                className="btn-auth-register"
+                onClick={() => {
+                  onClose();
+                  navigate('/register', {
+                    state: {
+                      message: 'Create your account to start hosting events.',
+                      from: '/events?create=true'
+                    }
+                  });
+                }}
+              >
+                Create Account
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="modal-overlay" onClick={onClose}>

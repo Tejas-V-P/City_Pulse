@@ -90,16 +90,20 @@ function App() {
               </NavLink>
             )}
 
-            <NavLink to="/events" className="nav-link nav-btn">
+            <Link
+              to={isLoggedIn ? "/events?create=true" : "/login"}
+              state={!isLoggedIn ? { message: 'Please sign in or create an account to organize and publish events.', from: '/events?create=true' } : undefined}
+              className="nav-link nav-btn"
+            >
               + Host Event
-            </NavLink>
+            </Link>
           </div>
         </nav>
 
         <main className="main-content">
           <Routes>
             <Route path="/" element={<Navigate to="/events" replace />} />
-            <Route path="/events" element={<EventExplorer currentUser={currentUser} />} />
+            <Route path="/events" element={<EventExplorer currentUser={currentUser} isLoggedIn={isLoggedIn} />} />
             
             {/* Dashboard is protected and displays dynamic user details */}
             <Route

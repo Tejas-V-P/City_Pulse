@@ -70,7 +70,8 @@ export default function CreateProfile({ onLogin }) {
 
     if (onLogin) onLogin(userData);
     setIsSubmitting(false);
-    navigate('/dashboard');
+    const redirectTarget = locationState?.from || '/dashboard';
+    navigate(redirectTarget, { replace: true });
   };
 
   return (
