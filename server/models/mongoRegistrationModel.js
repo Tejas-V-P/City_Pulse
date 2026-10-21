@@ -8,7 +8,8 @@ const registrationSchema = new mongoose.Schema(
     userName: { type: String, required: true },
     userEmail: { type: String, required: true },
     ticketCode: { type: String, required: true, unique: true },
-    status: { type: String, default: 'Confirmed' }
+    status: { type: String, default: 'Confirmed' }, // 'Confirmed', 'Checked-In', 'Cancelled'
+    checkedInAt: { type: Date }
   },
   { timestamps: true }
 );

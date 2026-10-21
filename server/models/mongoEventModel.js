@@ -24,18 +24,287 @@ const eventSchema = new mongoose.Schema(
     ],
     organizerName: { type: String, default: 'Event Host' },
     organizerId: { type: String, required: true, default: 'user-1' },
-    tags: [{ type: String, index: true }]
+    organizerEmail: { type: String, trim: true, default: '' },
+    tags: [{ type: String, index: true }],
+    coordinates: {
+      lat: { type: Number, default: 37.7749 },
+      lng: { type: Number, default: -122.4194 }
+    }
   },
   { timestamps: true }
 );
 
+export const CITY_COORDINATES = {
+  'san francisco': { lat: 37.7749, lng: -122.4194 },
+  'new york': { lat: 40.7128, lng: -74.0060 },
+  'london': { lat: 51.5074, lng: -0.1278 },
+  'tokyo': { lat: 35.6762, lng: 139.6503 },
+  'austin': { lat: 30.2672, lng: -97.7431 },
+  'mumbai': { lat: 19.0760, lng: 72.8777 },
+  'seattle': { lat: 47.6062, lng: -122.3321 },
+  'chicago': { lat: 41.8781, lng: -87.6298 }
+};
+
+export const getCityCoordinates = (cityName) => {
+  if (!cityName) return { lat: 37.7749, lng: -122.4194 };
+  const key = cityName.toLowerCase().trim();
+  return CITY_COORDINATES[key] || { lat: 37.7749, lng: -122.4194 };
+};
+
 export const Event = mongoose.models.Event || mongoose.model('Event', eventSchema);
 
-export const INITIAL_SEED_EVENTS = [];
+export const INITIAL_SEED_EVENTS = [
+  {
+    title: 'SF AI & Tech Summit 2026',
+    tagline: 'Exploring next-gen autonomous AI agents, LLM toolchains, and robotics.',
+    category: 'Technology',
+    city: 'San Francisco',
+    venue: 'Moscone Center, 747 Howard St',
+    date: '2026-11-15',
+    time: '09:00 AM - 05:00 PM',
+    price: 49.99,
+    isFree: false,
+    capacity: 250,
+    registeredCount: 42,
+    image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1000&q=80',
+    description: 'Join industry pioneers, founders, and engineers at San Francisco’s flagship AI summit. Features live demos, keynote sessions on agentic architectures, and VC networking lounges.',
+    agenda: [
+      { time: '09:00 AM', title: 'Registration & Welcome Keynote: Autonomous Agents' },
+      { time: '11:30 AM', title: 'Deep Dive: Neural Toolchains & Micro-Agents' },
+      { time: '02:00 PM', title: 'Panel: Future of Developer Tools & Enterprise AI' },
+      { time: '04:30 PM', title: 'Startup Demos & Networking Mixer' }
+    ],
+    organizerName: 'Alice Johnson',
+    organizerId: 'usr-1',
+    tags: ['#Tech', '#In-Person', '#Paid', '#Community']
+  },
+  {
+    title: 'Downtown Jazz & Blues Night',
+    tagline: 'Live acoustic soul, blues improvisation, and jazz fusion.',
+    category: 'Music',
+    city: 'San Francisco',
+    venue: 'Blue Note Lounge, 1030 Market St',
+    date: '2026-11-20',
+    time: '07:30 PM - 11:00 PM',
+    price: 15.00,
+    isFree: false,
+    capacity: 80,
+    registeredCount: 28,
+    image: 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?auto=format&fit=crop&w=1000&q=80',
+    description: 'An intimate evening of live jazz featuring the SF Modern Quartet alongside emerging indie vocalists. Handcrafted cocktails and small bites available.',
+    agenda: [
+      { time: '07:30 PM', title: 'Doors Open & Acoustic Warmup' },
+      { time: '08:30 PM', title: 'SF Modern Jazz Quartet Main Set' },
+      { time: '10:15 PM', title: 'Open Improv Jam Session' }
+    ],
+    organizerName: 'Charlie Davis',
+    organizerId: 'usr-3',
+    tags: ['#Music', '#In-Person', '#Paid', '#Indoor']
+  },
+  {
+    title: 'Bay Area UX/UI Design Systems Workshop',
+    tagline: 'Mastering tokenized Figma systems, accessibility, and fluid UI layout.',
+    category: 'Workshops',
+    city: 'San Francisco',
+    venue: 'WeWork SOMA, 156 2nd St',
+    date: '2026-11-28',
+    time: '02:00 PM - 06:00 PM',
+    price: 0,
+    isFree: true,
+    capacity: 50,
+    registeredCount: 19,
+    image: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?auto=format&fit=crop&w=1000&q=80',
+    description: 'Hands-on practical workshop covering design token architectures, multi-brand design systems, and seamless engineer handoff in modern web applications.',
+    agenda: [
+      { time: '02:00 PM', title: 'Design Tokens & Atomic Components Foundation' },
+      { time: '03:30 PM', title: 'Live Lab: Building WCAG AAA Accessible Components' },
+      { time: '05:00 PM', title: 'Figma to React Code Integration & Feedback' }
+    ],
+    organizerName: 'Diana Prince',
+    organizerId: 'usr-4',
+    tags: ['#Workshop', '#Free', '#In-Person', '#Community']
+  },
+  {
+    title: 'Silicon Alley Founders & Angel Mixer',
+    tagline: 'Connect with early-stage NYC tech founders, operators, and angels.',
+    category: 'Networking',
+    city: 'New York',
+    venue: 'Soho Tech Loft, 450 Broadway',
+    date: '2026-12-05',
+    time: '06:00 PM - 09:30 PM',
+    price: 0,
+    isFree: true,
+    capacity: 120,
+    registeredCount: 65,
+    image: 'https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=1000&q=80',
+    description: 'Curated networking evening for seed and Series A founders in NYC. Share pitch decks, discuss go-to-market strategies, and discover potential co-founders.',
+    agenda: [
+      { time: '06:00 PM', title: 'Check-in & Welcome Cocktails' },
+      { time: '07:00 PM', title: 'Lightning Pitches: 5 Selected Startups' },
+      { time: '08:00 PM', title: 'Open Networking & Investor Matchmaking' }
+    ],
+    organizerName: 'Bob Smith',
+    organizerId: 'usr-2',
+    tags: ['#Networking', '#Free', '#In-Person', '#Tech']
+  },
+  {
+    title: 'Brooklyn Indie Music & Arts Showcase',
+    tagline: 'A vibrant weekend showcase of local indie artists, bands, and sculptors.',
+    category: 'Arts & Design',
+    city: 'New York',
+    venue: 'Williamsburg Art Studio, 240 Kent Ave',
+    date: '2026-12-10',
+    time: '04:00 PM - 10:00 PM',
+    price: 20.00,
+    isFree: false,
+    capacity: 150,
+    registeredCount: 45,
+    image: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1000&q=80',
+    description: 'Immerse yourself in Brooklyn’s creative pulse with live painting, ambient indie rock performances, and interactive digital art exhibits.',
+    agenda: [
+      { time: '04:00 PM', title: 'Gallery Preview & Interactive Sculptures' },
+      { time: '06:30 PM', title: 'Live Performance by Williamsburg Indie Ensemble' },
+      { time: '08:45 PM', title: 'Artist Q&A & Community Reception' }
+    ],
+    organizerName: 'Sarah Jenkins',
+    organizerId: 'usr-5',
+    tags: ['#Cultural', '#In-Person', '#Paid', '#Music']
+  },
+  {
+    title: 'London FinTech & Open Banking Conference',
+    tagline: 'Leading discussions on decentralized payments, compliance, and API banking.',
+    category: 'Technology',
+    city: 'London',
+    venue: 'Level39 Technology Accelerator, 1 Canada Square',
+    date: '2026-11-18',
+    time: '09:30 AM - 05:00 PM',
+    price: 35.00,
+    isFree: false,
+    capacity: 180,
+    registeredCount: 84,
+    image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1000&q=80',
+    description: 'European leaders in payments, digital assets, and banking infrastructure unite in Canary Wharf to discuss next-generation cross-border finance.',
+    agenda: [
+      { time: '09:30 AM', title: 'Keynote: The Evolution of Global Open Banking' },
+      { time: '11:15 AM', title: 'Panel: Next-Gen Payments & Instant Settlement' },
+      { time: '02:30 PM', title: 'Regulatory Compliance & AI in Fraud Detection' },
+      { time: '04:15 PM', title: 'Executive FinTech Networking Reception' }
+    ],
+    organizerName: 'Liam Watson',
+    organizerId: 'usr-6',
+    tags: ['#Tech', '#In-Person', '#Paid', '#Registration-Required']
+  },
+  {
+    title: 'Shibuya Creative Code & Generative Art Festival',
+    tagline: 'Interactive shaders, WebGL projections, and algorithmic music installations.',
+    category: 'Arts & Design',
+    city: 'Tokyo',
+    venue: 'Shibuya Stream Hall, 3-21-3 Shibuya',
+    date: '2026-12-02',
+    time: '11:00 AM - 08:00 PM',
+    price: 0,
+    isFree: true,
+    capacity: 200,
+    registeredCount: 92,
+    image: 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?auto=format&fit=crop&w=1000&q=80',
+    description: 'Experience Tokyo’s thriving creative coding movement. Featuring interactive light walls, real-time audio-visual synthesizers, and live coding competitions.',
+    agenda: [
+      { time: '11:00 AM', title: 'Exhibition Opens: Tokyo Generative Artists' },
+      { time: '02:00 PM', title: 'Live Coding Battle: Shaders & Algorave' },
+      { time: '05:30 PM', title: 'Keynote: The Intersection of Code & Aesthetics' }
+    ],
+    organizerName: 'Kenji Sato',
+    organizerId: 'usr-7',
+    tags: ['#Cultural', '#Tech', '#Free', '#Indoor']
+  },
+  {
+    title: 'Austin Live Sound & Indie Beats Showcase',
+    tagline: 'Outdoor live indie music and food truck festival under the Texas stars.',
+    category: 'Music',
+    city: 'Austin',
+    venue: 'Red River Cultural District, 705 Red River St',
+    date: '2026-11-25',
+    time: '07:00 PM - 11:30 PM',
+    price: 12.50,
+    isFree: false,
+    capacity: 120,
+    registeredCount: 54,
+    image: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1000&q=80',
+    description: 'Celebrate Austin’s legendary live music scene with four local indie rock and electronic acts, local craft beers, and renowned ATX street cuisine.',
+    agenda: [
+      { time: '07:00 PM', title: 'Gates Open & Local Food Trucks' },
+      { time: '08:00 PM', title: 'Opening Set: The Austin Dreamers' },
+      { time: '09:45 PM', title: 'Headliner: Neon Sunset Live' }
+    ],
+    organizerName: 'Marcus Vance',
+    organizerId: 'usr-8',
+    tags: ['#Music', '#Outdoor', '#Paid', '#Festival']
+  },
+  {
+    title: 'Mumbai NextGen Cloud & AI Summit',
+    tagline: 'Scalable cloud infrastructure, distributed systems, and real-time inference.',
+    category: 'Technology',
+    city: 'Mumbai',
+    venue: 'Bandra Kurla Complex Tech Arena, BKC',
+    date: '2026-12-12',
+    time: '10:00 AM - 06:00 PM',
+    price: 0,
+    isFree: true,
+    capacity: 300,
+    registeredCount: 135,
+    image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1000&q=80',
+    description: 'India’s premier developer summit exploring Kubernetes at scale, edge AI computing, microservices optimization, and high-concurrency cloud architectures.',
+    agenda: [
+      { time: '10:00 AM', title: 'Keynote: Cloud Scalability for 100M Users' },
+      { time: '12:00 PM', title: 'Workshop: Deploying Distributed LLM Inference' },
+      { time: '02:45 PM', title: 'Panel: Next Decade of Indian Cloud Startups' },
+      { time: '04:30 PM', title: 'Networking & Developer High Tea' }
+    ],
+    organizerName: 'Rohan Sharma',
+    organizerId: 'usr-9',
+    tags: ['#Tech', '#Free', '#In-Person', '#Community']
+  },
+  {
+    title: 'Seattle Full-Stack Code Hackathon',
+    tagline: '48-hour buildathon for modern developers, UX creators, and AI innovators.',
+    category: 'Workshops',
+    city: 'Seattle',
+    venue: 'Pioneer Square Innovation Hub, 200 1st Ave S',
+    date: '2026-12-18',
+    time: '10:00 AM - 08:00 PM',
+    price: 0,
+    isFree: true,
+    capacity: 100,
+    registeredCount: 47,
+    image: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?auto=format&fit=crop&w=1000&q=80',
+    description: 'Form teams, build functional prototypes, and pitch in front of veteran Pacific Northwest founders and mentors. Full catering, coffee, and developer swag provided.',
+    agenda: [
+      { time: '10:00 AM', title: 'Kickoff, Problem Statements & Team Matching' },
+      { time: '01:00 PM', title: 'Mentorship Sprint & Architecture Reviews' },
+      { time: '06:00 PM', title: 'Project Demos, Judging & Awards' }
+    ],
+    organizerName: 'Elena Rostova',
+    organizerId: 'usr-10',
+    tags: ['#Tech', '#Workshop', '#Free', '#In-Person']
+  }
+];
 
-// Auto-normalize legacy events if any fields are missing
+// Auto-seed function & normalize legacy events
 export const seedMongoEvents = async () => {
   try {
+    const count = await Event.countDocuments();
+    if (count < 4) {
+      console.log(`🌱 Seeding initial curated city events into MongoDB...`);
+      for (const eventData of INITIAL_SEED_EVENTS) {
+        const exists = await Event.findOne({ title: eventData.title });
+        if (!exists) {
+          await Event.create(eventData);
+        }
+      }
+      console.log(`✅ MongoDB events collection populated successfully!`);
+    }
+
+    // Normalize any legacy events
     await Event.updateMany(
       { $or: [{ city: { $exists: false } }, { city: null }, { city: '' }] },
       { $set: { city: 'San Francisco' } }
@@ -50,9 +319,18 @@ export const seedMongoEvents = async () => {
     );
     await Event.updateMany(
       { $or: [{ date: { $exists: false } }, { date: null }, { date: '' }] },
-      { $set: { date: '2026-10-20' } }
+      { $set: { date: '2026-11-15' } }
     );
+
+    // Normalize coordinates
+    const allEventsWithoutCoords = await Event.find({
+      $or: [{ 'coordinates.lat': { $exists: false } }, { coordinates: null }]
+    });
+    for (const evt of allEventsWithoutCoords) {
+      evt.coordinates = getCityCoordinates(evt.city);
+      await evt.save();
+    }
   } catch (err) {
-    console.warn('Legacy events normalization note:', err.message);
+    console.warn('MongoDB events seeding note:', err.message);
   }
 };
