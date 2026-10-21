@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AIEventAssistantModal from './AIEventAssistantModal';
+import { API_BASE_URL } from '../config/api';
+import { addStoredCreatedEvent } from '../utils/storage';
 import './CreateEventModal.css';
 
 const SAMPLE_POSTERS = [
@@ -10,8 +12,23 @@ const SAMPLE_POSTERS = [
   { name: 'Workshop / Education', url: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?auto=format&fit=crop&w=1000&q=80' },
 ];
 
-export default function CreateEventModal({ onClose, onCreateSuccess, currentUser }) {
+export default function CreateEventModal({ isOpen, onClose, onSuccess, onCreateSuccess, currentUser }) {
+  if (isOpen !== undefined && !isOpen) return null;
+
   const navigate = useNavigate();
+  const handleSuccess = onSuccess || onCreateSuccess || (() => {});
+
+  // Close on Escape key
+  React.useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && onClose) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   const activeUser = currentUser || (() => {
     try {
       const saved = localStorage.getItem('currentUser');
@@ -41,7 +58,8 @@ export default function CreateEventModal({ onClose, onCreateSuccess, currentUser
     agenda: [],
     tags: ['#In-Person', '#Free', '#Community'],
     organizerName: activeUser?.name || '',
-    organizerId: activeUser?.id || activeUser?._id || activeUser?.email || ''
+    organizerId: activeUser?.id || activeUser?._id || activeUser?.email || '',
+    organizerEmail: activeUser?.email || ''
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -60,7 +78,7 @@ export default function CreateEventModal({ onClose, onCreateSuccess, currentUser
   const handleAutoSuggestTags = async () => {
     setIsSuggestingTags(true);
     try {
-      const res = await fetch('http://localhost:5000/api/tags/suggest', {
+      const res = await fetch(`${API_BASE_URL}/api/tags/suggest`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -121,7 +139,9 @@ export default function CreateEventModal({ onClose, onCreateSuccess, currentUser
     e.preventDefault();
     setErrorMsg('');
 
-    if (!isUserLoggedIn || !formData.organizerId) {
+    const resolvedOrgId = activeUser?.id || activeUser?._id || activeUser?.email || formData.organizerId;
+
+    if (!isUserLoggedIn || !resolvedOrgId) {
       setErrorMsg('You must be signed in to create and publish events.');
       return;
     }
@@ -133,11 +153,18 @@ export default function CreateEventModal({ onClose, onCreateSuccess, currentUser
 
     setIsSubmitting(true);
 
+    const payload = {
+      ...formData,
+      organizerName: activeUser?.name || formData.organizerName || 'Event Host',
+      organizerId: resolvedOrgId,
+      organizerEmail: activeUser?.email || formData.organizerEmail || ''
+    };
+
     try {
-      const res = await fetch('http://localhost:5000/api/events', {
+      const res = await fetch(`${API_BASE_URL}/api/events`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
 
       const data = await res.json();
@@ -147,7 +174,8 @@ export default function CreateEventModal({ onClose, onCreateSuccess, currentUser
         return;
       }
 
-      onCreateSuccess(data.data);
+      addStoredCreatedEvent(data.data);
+      handleSuccess(data.data);
     } catch (err) {
       if (!isUserLoggedIn || !formData.organizerId) {
         setErrorMsg('You must be signed in to create and publish events.');
@@ -162,7 +190,8 @@ export default function CreateEventModal({ onClose, onCreateSuccess, currentUser
         registeredCount: 0,
         createdAt: new Date().toISOString()
       };
-      onCreateSuccess(localNewEvent);
+      addStoredCreatedEvent(localNewEvent);
+      handleSuccess(localNewEvent);
     } finally {
       setIsSubmitting(false);
     }

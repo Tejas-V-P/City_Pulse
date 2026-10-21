@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { API_BASE_URL } from '../config/api';
 import './AIEventAssistantModal.css';
 
 export default function AIEventAssistantModal({ onClose, onApplyPlan }) {
@@ -13,7 +14,7 @@ export default function AIEventAssistantModal({ onClose, onApplyPlan }) {
     setIsGenerating(true);
 
     try {
-      const res = await fetch('http://localhost:5000/api/ai/generate-event', {
+      const res = await fetch(`${API_BASE_URL}/api/ai/generate-event`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ topic, city, category })

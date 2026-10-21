@@ -7,12 +7,24 @@ export const requestLogger = (req, res, next) => {
   next();
 };
 
-// 2. Custom Input Validation Middleware (Applies to Event creation/update routes)
+// 2. Custom Input Validation Middleware (Applies strictly to Event creation/update routes)
 export const validateEventInput = (req, res, next) => {
-  // Exclude registration and ticket actions from event metadata validation
-  const isRegistrationPath = req.originalUrl.includes('/register') || req.originalUrl.includes('/registrations');
+  // Exclude attendee roster mutations, ticket actions, check-in, and seat holds
+  const isSubResource = 
+    req.originalUrl.includes('/attendees') ||
+    req.originalUrl.includes('/register') ||
+    req.originalUrl.includes('/registrations') ||
+    req.originalUrl.includes('/reserve') ||
+    req.originalUrl.includes('/release-reservation') ||
+    req.originalUrl.includes('/check-in') ||
+    req.originalUrl.includes('/live-stream') ||
+    req.originalUrl.includes('/ticket-pdf');
 
-  if ((req.method === 'POST' || req.method === 'PUT') && !isRegistrationPath) {
+  if (isSubResource) {
+    return next();
+  }
+
+  if (req.method === 'POST' || req.method === 'PUT') {
     const { title, city, date } = req.body;
     if (!title || typeof title !== 'string' || title.trim() === '') {
       return res.status(400).json({

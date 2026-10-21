@@ -1,0 +1,35 @@
+[
+  {
+    "id": "reg-1792605046248",
+    "eventId": "test-evt-1792605046218",
+    "userId": "test-user-bob-1792605046218",
+    "userName": "Bob Tester",
+    "userEmail": "bob@example.com",
+    "ticketCode": "TKT-SF-90124",
+    "registeredAt": "2026-10-21T17:50:46.248Z",
+    "status": "Checked-In",
+    "checkedInAt": "2026-10-21T17:50:46.249Z"
+  },
+  {
+    "id": "reg-1792605021880",
+    "eventId": "evt-1",
+    "userId": "u-1",
+    "userName": "Bob",
+    "userEmail": "attendee@example.com",
+    "ticketCode": "TKT-SF-99628",
+    "registeredAt": "2026-10-21T17:50:21.880Z",
+    "status": "Checked-In",
+    "checkedInAt": "2026-10-21T17:50:21.883Z"
+  },
+  {
+    "id": "reg-1792600011320",
+    "eventId": "test-evt-999",
+    "userId": "test-user-bob",
+    "userName": "Bob Tester",
+    "userEmail": "bob@example.com",
+    "ticketCode": "TKT-SF-17425",
+    "registeredAt": "2026-10-21T16:26:51.320Z",
+    "status": "Checked-In",
+    "checkedInAt": "2026-10-21T16:26:51.322Z"
+  }
+]

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Aurora from '../components/Aurora';
 import TextType from '../components/TextType';
+import { API_BASE_URL } from '../config/api';
 
 export default function CreateProfile({ onLogin }) {
   const locationState = useLocation().state || {};
@@ -52,7 +53,7 @@ export default function CreateProfile({ onLogin }) {
     // Update in database if userId exists
     if (userData.id && userData.id !== 'user-1' && !userData.id.startsWith('user-')) {
       try {
-        await fetch(`http://localhost:5000/api/auth/profile/${encodeURIComponent(userData.id)}`, {
+        await fetch(`${API_BASE_URL}/api/auth/profile/${encodeURIComponent(userData.id)}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

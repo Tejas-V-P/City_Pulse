@@ -14,6 +14,35 @@
   gap: 1.5rem;
 }
 
+.modal-close-btn {
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
+  background: rgba(239, 68, 68, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: 1.1rem;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modal-close-btn:hover {
+  background: #dc2626;
+  transform: scale(1.1);
+}
+
+.create-modal-header {
+  padding-right: 3.5rem;
+}
+
 .create-modal-header h3 {
   font-size: 1.5rem;
   color: var(--text-main);

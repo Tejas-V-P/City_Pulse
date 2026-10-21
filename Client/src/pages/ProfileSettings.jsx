@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Aurora from '../components/Aurora';
 import TextType from '../components/TextType';
+import { API_BASE_URL } from '../config/api';
 
 export default function ProfileSettings({ currentUser, onLogin, onLogout }) {
   const activeUser = currentUser || (() => {
@@ -62,7 +63,7 @@ export default function ProfileSettings({ currentUser, onLogin, onLogout }) {
     setIsSubmitting(true);
 
     try {
-      const res = await fetch(`http://localhost:5000/api/auth/profile/${encodeURIComponent(userId)}`, {
+      const res = await fetch(`${API_BASE_URL}/api/auth/profile/${encodeURIComponent(userId)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

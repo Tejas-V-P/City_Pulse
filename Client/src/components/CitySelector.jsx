@@ -13,7 +13,27 @@ const CITIES = [
 
 const CATEGORIES = ['All', 'Technology', 'Music', 'Networking', 'Arts & Design', 'Workshops'];
 
-export default function CitySelector({ selectedCity, onSelectCity, selectedCategory, onSelectCategory, searchQuery, onSearchChange }) {
+export default function CitySelector({ 
+  selectedCity, 
+  onSelectCity, 
+  selectedCategory, 
+  onSelectCategory, 
+  searchQuery, 
+  onSearchChange,
+  allEvents = []
+}) {
+  // Merge base cities with any dynamic cities from published events
+  const dynamicCityNames = Array.from(
+    new Set(allEvents.map(e => e.city).filter(Boolean))
+  );
+
+  const cityList = [...CITIES];
+  for (const cName of dynamicCityNames) {
+    if (!cityList.some(c => c.name.toLowerCase() === cName.toLowerCase())) {
+      cityList.push({ name: cName, icon: '🏙️' });
+    }
+  }
+
   return (
     <div className="city-selector-container">
       <div className="city-header-row">
@@ -24,7 +44,7 @@ export default function CitySelector({ selectedCity, onSelectCity, selectedCateg
       </div>
 
       <div className="city-chips-wrapper">
-        {CITIES.map(city => (
+        {cityList.map(city => (
           <button
             key={city.name}
             className={`city-chip ${selectedCity === city.name ? 'active' : ''}`}

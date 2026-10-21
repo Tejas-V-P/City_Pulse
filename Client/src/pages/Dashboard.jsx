@@ -2,15 +2,25 @@ import React, { useState, useEffect } from 'react';
 import TicketPassModal from '../components/TicketPassModal';
 import CreateEventModal from '../components/CreateEventModal';
 import AttendeeRosterModal from '../components/AttendeeRosterModal';
+import CheckInScannerModal from '../components/CheckInScannerModal';
+import { API_BASE_URL } from '../config/api';
+import {
+  getStoredRegistrations,
+  getStoredOrganizedEvents,
+  saveStoredRegistration,
+  cancelStoredRegistration,
+  deleteStoredEvent,
+  addStoredCreatedEvent
+} from '../utils/storage';
 import './Dashboard.css';
 
 export default function Dashboard({ currentUser }) {
   const [activeTab, setActiveTab] = useState('tickets'); // 'tickets' | 'organized'
-  const [userRegistrations, setUserRegistrations] = useState([]);
-  const [organizedEvents, setOrganizedEvents] = useState([]);
   const [activeTicketModal, setActiveTicketModal] = useState(null);
   const [activeRosterEvent, setActiveRosterEvent] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showScannerModal, setShowScannerModal] = useState(false);
+  const [scannerEventId, setScannerEventId] = useState(null);
 
   // Dynamic User Profile details loaded from props or localStorage
   const [user, setUser] = useState(() => {
@@ -35,27 +45,52 @@ export default function Dashboard({ currentUser }) {
     }
   }, [currentUser]);
 
-  const userId = user.id || user.email || 'user-1';
+  const userId = user.id || user._id || user.email || 'user-1';
+
+  // Initialize immediately from persistent storage (no blank flash, survives reloads!)
+  const [userRegistrations, setUserRegistrations] = useState(() => {
+    return getStoredRegistrations(userId);
+  });
+
+  const [organizedEvents, setOrganizedEvents] = useState(() => {
+    return getStoredOrganizedEvents(userId);
+  });
 
   const fetchData = async () => {
     try {
-      const regRes = await fetch(`http://localhost:5000/api/events/user/${encodeURIComponent(userId)}/registrations`);
+      // 1. Fetch user registered tickets
+      const regRes = await fetch(`${API_BASE_URL}/api/events/user/${encodeURIComponent(userId)}/registrations`);
       const regData = await regRes.json();
-      if (regRes.ok && regData.success) {
-        setUserRegistrations(regData.data);
+      if (regRes.ok && regData.success && Array.isArray(regData.data)) {
+        for (const r of regData.data) {
+          saveStoredRegistration(r, r.event);
+        }
       }
-
-      const evtRes = await fetch(`http://localhost:5000/api/events?organizerId=${encodeURIComponent(userId)}`);
-      const evtData = await evtRes.json();
-      if (evtRes.ok && evtData.success) {
-        setOrganizedEvents(evtData.data);
-      }
-    } catch (err) {
-      console.log('Using local dashboard state fallback');
+    } catch {
+      // ignore network errors, rely on storage
     }
+
+    try {
+      // 2. Fetch user organized events
+      const evtRes = await fetch(`${API_BASE_URL}/api/events?organizerId=${encodeURIComponent(userId)}`);
+      const evtData = await evtRes.json();
+      if (evtRes.ok && evtData.success && Array.isArray(evtData.data)) {
+        for (const e of evtData.data) {
+          addStoredCreatedEvent(e);
+        }
+      }
+    } catch {
+      // ignore network errors, rely on storage
+    }
+
+    // Update state from storage (merged)
+    setUserRegistrations(getStoredRegistrations(userId));
+    setOrganizedEvents(getStoredOrganizedEvents(userId));
   };
 
   useEffect(() => {
+    setUserRegistrations(getStoredRegistrations(userId));
+    setOrganizedEvents(getStoredOrganizedEvents(userId));
     fetchData();
   }, [userId]);
 
@@ -63,37 +98,40 @@ export default function Dashboard({ currentUser }) {
     if (!window.confirm('Are you sure you want to cancel this event registration?')) return;
 
     try {
-      await fetch(`http://localhost:5000/api/events/user/${encodeURIComponent(userId)}/registrations/${regId}`, {
+      await fetch(`${API_BASE_URL}/api/events/user/${encodeURIComponent(userId)}/registrations/${regId}`, {
         method: 'DELETE'
       });
     } catch {
-      // ignore
+      // ignore API failure, remove locally
     }
 
-    setUserRegistrations(prev => prev.filter(r => r.id !== regId));
+    cancelStoredRegistration(regId, userId);
+    setUserRegistrations(getStoredRegistrations(userId));
   };
 
   const handleDeleteEvent = async (eventId) => {
     if (!window.confirm('Are you sure you want to delete this hosted event? All attendee registrations will be removed.')) return;
 
     try {
-      await fetch(`http://localhost:5000/api/events/${encodeURIComponent(eventId)}`, {
+      await fetch(`${API_BASE_URL}/api/events/${encodeURIComponent(eventId)}`, {
         method: 'DELETE'
       });
     } catch {
-      // ignore
+      // ignore API failure, remove locally
     }
 
-    setOrganizedEvents(prev => prev.filter(e => e.id !== eventId && e._id !== eventId));
+    deleteStoredEvent(eventId);
     if (activeRosterEvent && (activeRosterEvent.id === eventId || activeRosterEvent._id === eventId)) {
       setActiveRosterEvent(null);
     }
+    fetchData();
   };
 
   const handleCreateSuccess = (newEvent) => {
     setShowCreateModal(false);
-    setOrganizedEvents(prev => [newEvent, ...prev]);
+    addStoredCreatedEvent(newEvent);
     setActiveTab('organized');
+    fetchData();
   };
 
   return (
@@ -220,7 +258,7 @@ export default function Dashboard({ currentUser }) {
           {organizedEvents.length > 0 ? (
             <div className="organized-grid">
               {organizedEvents.map(evt => (
-                <div key={evt.id} className="ticket-item-card">
+                <div key={evt.id || evt._id} className="ticket-item-card">
                   <div className="ticket-item-header">
                     <div>
                       <span className="event-category-badge">{evt.category || 'General'}</span>
@@ -241,17 +279,28 @@ export default function Dashboard({ currentUser }) {
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: '0.75rem', marginTop: 'auto' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto', flexWrap: 'wrap' }}>
                     <button
                       className="btn-view-pass"
-                      style={{ flex: 1, background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)', boxShadow: '0 4px 14px rgba(37, 99, 235, 0.4)' }}
+                      style={{ flex: '1 1 50%', background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)', boxShadow: '0 4px 14px rgba(37, 99, 235, 0.4)' }}
                       onClick={() => setActiveRosterEvent(evt)}
                     >
-                      👥 Manage Attendees ({evt.registeredCount || 0})
+                      👥 Roster ({evt.registeredCount || 0})
+                    </button>
+                    <button
+                      className="btn-view-pass"
+                      style={{ flex: '1 1 35%', background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)', boxShadow: '0 4px 14px rgba(79, 70, 229, 0.4)' }}
+                      onClick={() => {
+                        setScannerEventId(evt.id || evt._id);
+                        setShowScannerModal(true);
+                      }}
+                    >
+                      📷 Scan QR
                     </button>
                     <button
                       className="btn-cancel-reg"
-                      onClick={() => handleDeleteEvent(evt.id)}
+                      style={{ flex: '0 0 auto' }}
+                      onClick={() => handleDeleteEvent(evt.id || evt._id)}
                     >
                       Delete
                     </button>
@@ -284,8 +333,17 @@ export default function Dashboard({ currentUser }) {
       {activeRosterEvent && (
         <AttendeeRosterModal
           event={activeRosterEvent}
+          currentUser={user}
           onClose={() => setActiveRosterEvent(null)}
           onDeleteEvent={handleDeleteEvent}
+        />
+      )}
+
+      {showScannerModal && (
+        <CheckInScannerModal
+          isOpen={showScannerModal}
+          onClose={() => setShowScannerModal(false)}
+          activeEventId={scannerEventId}
         />
       )}
 
