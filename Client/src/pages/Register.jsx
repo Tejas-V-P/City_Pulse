@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import Aurora from '../components/Aurora';
 import TextType from '../components/TextType';
 
@@ -13,6 +13,7 @@ export default function Register() {
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -58,7 +59,7 @@ export default function Register() {
       // Save registered user into temporary state & localStorage
       localStorage.setItem('tempUser', JSON.stringify(data.data));
       localStorage.setItem('currentUser', JSON.stringify(data.data));
-      navigate('/create-profile', { state: data.data });
+      navigate('/create-profile', { state: { ...data.data, from: location.state?.from } });
     } catch (err) {
       // Local fallback if server offline
       const fallbackUser = {
@@ -71,7 +72,7 @@ export default function Register() {
       };
       localStorage.setItem('tempUser', JSON.stringify(fallbackUser));
       localStorage.setItem('currentUser', JSON.stringify(fallbackUser));
-      navigate('/create-profile', { state: fallbackUser });
+      navigate('/create-profile', { state: { ...fallbackUser, from: location.state?.from } });
     } finally {
       setIsSubmitting(false);
     }

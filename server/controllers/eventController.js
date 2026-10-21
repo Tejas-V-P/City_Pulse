@@ -154,12 +154,22 @@ export const getEventAttendees = async (req, res) => {
 // 3. POST /api/events (MongoDB CRUD: Event.create)
 export const createNewEvent = async (req, res) => {
   try {
-    const { title, city, venue, date } = req.body;
+    const { title, city, venue, date, organizerId, organizerName } = req.body;
     if (!title || !city || !venue || !date) {
       return res.status(400).json({
         status: 400,
         error: 'BadRequest',
         message: 'Missing required fields: title, city, venue, date are required.'
+      });
+    }
+
+    // Require an authenticated organizer
+    if (!organizerId || organizerId === 'user-1' || organizerId === 'anonymous' || !organizerName) {
+      return res.status(401).json({
+        status: 401,
+        success: false,
+        error: 'Unauthorized',
+        message: 'Authentication required. You must be signed in to create and publish events.'
       });
     }
 
@@ -179,8 +189,8 @@ export const createNewEvent = async (req, res) => {
         image: req.body.image || 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1000&q=80',
         description: req.body.description || '',
         agenda: req.body.agenda || [],
-        organizerName: req.body.organizerName || 'Event Host',
-        organizerId: req.body.organizerId || 'user-1',
+        organizerName: organizerName.trim(),
+        organizerId: organizerId.trim(),
         tags: Array.isArray(req.body.tags) ? req.body.tags : []
       };
 
@@ -196,7 +206,11 @@ export const createNewEvent = async (req, res) => {
     }
 
     // Memory fallback
-    const newEvent = createMemoryEvent(req.body);
+    const newEvent = createMemoryEvent({
+      ...req.body,
+      organizerName: organizerName.trim(),
+      organizerId: organizerId.trim()
+    });
     res.status(201).json({ status: 201, success: true, message: 'Event created successfully', data: newEvent });
   } catch (err) {
     res.status(500).json({ status: 500, error: err.message });

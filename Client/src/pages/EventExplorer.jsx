@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import CitySelector from '../components/CitySelector';
 import TagFilterBar from '../components/TagFilterBar';
 import EventCard from '../components/EventCard';
@@ -8,7 +9,10 @@ import TicketPassModal from '../components/TicketPassModal';
 import emptyIllustration from '../assets/empty_events_illustration.jpg';
 import './EventExplorer.css';
 
-export default function EventExplorer({ currentUser }) {
+export default function EventExplorer({ currentUser, isLoggedIn }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const [events, setEvents] = useState([]);
   const [selectedCity, setSelectedCity] = useState('All Cities');
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -19,6 +23,30 @@ export default function EventExplorer({ currentUser }) {
   const [activeEventModal, setActiveEventModal] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [issuedTicket, setIssuedTicket] = useState(null); // { registration, event }
+
+  const isUserLoggedIn = Boolean(
+    isLoggedIn ||
+    currentUser?.name ||
+    localStorage.getItem('isLoggedIn') === 'true'
+  );
+
+  // Check URL query param for ?create=true
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.get('create') === 'true') {
+      if (isUserLoggedIn) {
+        setShowCreateModal(true);
+      } else {
+        navigate('/login', {
+          state: {
+            message: 'Please sign in or create an account to organize and publish events.',
+            from: '/events?create=true'
+          },
+          replace: true
+        });
+      }
+    }
+  }, [location.search, isUserLoggedIn, navigate]);
 
   // Fetch events from backend API
   const fetchEvents = async () => {
@@ -54,8 +82,29 @@ export default function EventExplorer({ currentUser }) {
     setSelectedTags([]);
   };
 
-  const handleCreateEventSuccess = (newEvent) => {
+  const handleHostEventClick = () => {
+    if (!isUserLoggedIn) {
+      navigate('/login', {
+        state: {
+          message: 'Please sign in or create an account to organize and publish events.',
+          from: '/events?create=true'
+        }
+      });
+      return;
+    }
+    setShowCreateModal(true);
+  };
+
+  const handleCloseCreateModal = () => {
     setShowCreateModal(false);
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.get('create') === 'true') {
+      navigate('/events', { replace: true });
+    }
+  };
+
+  const handleCreateEventSuccess = (newEvent) => {
+    handleCloseCreateModal();
     setEvents(prev => [newEvent, ...prev]);
     // Optionally open detail view
     setActiveEventModal(newEvent);
@@ -87,7 +136,7 @@ export default function EventExplorer({ currentUser }) {
         </p>
 
         <div className="hero-cta-group">
-          <button className="btn-hero-organize" onClick={() => setShowCreateModal(true)}>
+          <button className="btn-hero-organize" onClick={handleHostEventClick}>
             <span>⚡ Host / Organize Event</span>
           </button>
           <a href="#events-grid-section" className="btn-hero-explore">
@@ -159,7 +208,7 @@ export default function EventExplorer({ currentUser }) {
               />
               <h4>No events found for {selectedCity !== 'All Cities' ? selectedCity : 'your criteria'}</h4>
               <p>Be the first to organize an exciting tech meetup, music gig, or workshop in this city!</p>
-              <button className="btn-hero-organize" onClick={() => setShowCreateModal(true)}>
+              <button className="btn-hero-organize" onClick={handleHostEventClick}>
                 + Create Event in {selectedCity === 'All Cities' ? 'your City' : selectedCity}
               </button>
             </div>
@@ -179,7 +228,7 @@ export default function EventExplorer({ currentUser }) {
 
       {showCreateModal && (
         <CreateEventModal
-          onClose={() => setShowCreateModal(false)}
+          onClose={handleCloseCreateModal}
           onCreateSuccess={handleCreateEventSuccess}
           currentUser={currentUser}
         />
