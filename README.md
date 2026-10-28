@@ -79,7 +79,7 @@ the frontend's environment variable.
    `render.yaml` at the repo root and create a `city-pulse-api` web service
    with root directory `server`, `npm install` as the build command, `npm
    start` as the start command, and `/health` as the health check path. Set
-   `MONGO_URI`, `CLIENT_URL`, and `JWT_SECRET` in the Render environment.
+   `MONGO_URI` and `CLIENT_URL` in the Render environment.
    (No blueprint? Create a Web Service manually with those same settings.)
 3. In the service's **Environment** tab, set:
    - `MONGO_URI` — your MongoDB Atlas connection string
