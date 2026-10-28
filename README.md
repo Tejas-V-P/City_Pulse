@@ -24,7 +24,7 @@ render.yaml Render blueprint for deploying the backend
 
 ## Local development
 
-Requires Node.js 18+ and a MongoDB connection (Atlas cluster or local `mongod`).
+Requires Node.js 20.19+ (or 22.12+) and a MongoDB connection (Atlas cluster or local `mongod`).
 
 ```bash
 # from the repo root
@@ -57,7 +57,7 @@ default in development.
 
 | Variable | Required | Description |
 |---|---|---|
-| `VITE_API_URL` | In production | Base URL of the deployed backend, e.g. `https://city-pulse-api.onrender.com`. Falls back to `http://localhost:5000` if unset. |
+| `VITE_API_URL` | In production | Base URL of the deployed backend, e.g. `https://city-pulse-api.onrender.com`. Defaults to `http://localhost:5000` in development; required in production. |
 
 > ⚠️ **Security note:** a MongoDB credential was committed in an earlier
 > version of this project. The application now reads the connection string
@@ -78,7 +78,8 @@ the frontend's environment variable.
 2. In Render: **New → Blueprint**, point it at the repo. Render will read
    `render.yaml` at the repo root and create a `city-pulse-api` web service
    with root directory `server`, `npm install` as the build command, `npm
-   start` as the start command, and `/health` as the health check path.
+   start` as the start command, and `/health` as the health check path. Set
+   `MONGO_URI`, `CLIENT_URL`, and `JWT_SECRET` in the Render environment.
    (No blueprint? Create a Web Service manually with those same settings.)
 3. In the service's **Environment** tab, set:
    - `MONGO_URI` — your MongoDB Atlas connection string
@@ -109,5 +110,5 @@ the frontend's environment variable.
 
 - **Frontend:** React 19, React Router, Vite, vanilla CSS (custom design
   system, no UI framework)
-- **Backend:** Express 4, Mongoose 9 (MongoDB), bcryptjs, helmet, express-rate-limit
+- **Backend:** Express 4, Mongoose 9 (MongoDB), bcryptjs, PostgreSQL (`pg`), Redis (`ioredis`)
 - **AI feature:** Google Gemini, via `server/controllers/aiController.js`
