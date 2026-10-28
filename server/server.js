@@ -22,7 +22,11 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://beatHubTejas:Beathub8660@cluster0.vwiulx1.mongodb.net/?appName=Cluster0';
+const MONGO_URI = process.env.MONGO_URI;
+
+if (!MONGO_URI) {
+  throw new Error('MONGO_URI is required. Copy server/.env.example to server/.env and configure it.');
+}
 
 // ----------------------------------------------------------------------------
 // Connect to PostgreSQL Database & Initialize SQL Schema
@@ -33,36 +37,36 @@ if (pgConnected) {
 }
 
 // ----------------------------------------------------------------------------
-// Connect to MongoDB Database (Primary Atlas Cluster -> Local Mongo -> Fallback)
+// Connect to MongoDB Database (configured URI -> local fallback -> fallback data)
 // ----------------------------------------------------------------------------
 let isMongoConnected = false;
 let connectedDbSource = '';
 
 try {
   mongoose.set('strictQuery', false);
-  console.log(`⏳ Connecting to MongoDB Atlas cluster...`);
+  console.log('⏳ Connecting to configured MongoDB database...');
   await mongoose.connect(MONGO_URI, {
     serverSelectionTimeoutMS: 4000
   });
   isMongoConnected = true;
-  connectedDbSource = 'MongoDB Atlas Cluster';
-  console.log(`🍃 Connected to MongoDB Atlas cluster successfully!`);
+  connectedDbSource = 'Configured MongoDB Database';
+  console.log('🍃 Connected to MongoDB successfully!');
   await seedMongoEvents();
-} catch (atlasErr) {
-  console.warn(`⚠️ MongoDB Atlas note: ${atlasErr.message}`);
-  console.log(`⏳ Retrying connection with local MongoDB daemon (mongodb://127.0.0.1:27017/cityevent_db)...`);
-  
+} catch (mongoErr) {
+  console.warn(`⚠️ Configured MongoDB note: ${mongoErr.message}`);
+  console.log('⏳ Retrying connection with local MongoDB daemon (mongodb://127.0.0.1:27017/city_pulse)...');
+
   try {
-    await mongoose.connect('mongodb://127.0.0.1:27017/cityevent_db', {
+    await mongoose.connect('mongodb://127.0.0.1:27017/city_pulse', {
       serverSelectionTimeoutMS: 2000
     });
     isMongoConnected = true;
     connectedDbSource = 'Local MongoDB Instance';
-    console.log(`🍃 Connected to Local MongoDB database successfully!`);
+    console.log('🍃 Connected to Local MongoDB database successfully!');
     await seedMongoEvents();
   } catch (localErr) {
     console.warn(`⚠️ Local MongoDB note: ${localErr.message}`);
-    console.log(`ℹ️ Server running in fallback data mode.`);
+    console.log('ℹ️ Server running in fallback data mode.');
     connectedDbSource = 'Fallback Data Mode';
   }
 }
