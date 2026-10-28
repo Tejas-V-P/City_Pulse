@@ -9,7 +9,7 @@ import TicketPassModal from '../components/TicketPassModal';
 import EventMap from '../components/EventMap';
 import CheckInScannerModal from '../components/CheckInScannerModal';
 import emptyIllustration from '../assets/empty_events_illustration.jpg';
-import { API_BASE_URL } from '../config/api';
+import { API_BASE_URL, apiFetch } from '../config/api';
 import {
   getStoredEvents,
   addStoredCreatedEvent,
@@ -54,9 +54,7 @@ export default function EventExplorer({ currentUser, isLoggedIn }) {
   const [issuedTicket, setIssuedTicket] = useState(null);
 
   const isUserLoggedIn = Boolean(
-    isLoggedIn ||
-    currentUser?.name ||
-    localStorage.getItem('isLoggedIn') === 'true'
+    isLoggedIn && currentUser?.id
   );
 
   // Check URL query param for ?create=true
@@ -182,7 +180,7 @@ export default function EventExplorer({ currentUser, isLoggedIn }) {
         url += `lat=${userCoords.lat}&lng=${userCoords.lng}&radius=${radiusKm}&`;
       }
 
-      const res = await fetch(url);
+      const res = await apiFetch(url);
       const data = await res.json();
       if (res.ok && data.success && Array.isArray(data.data)) {
         syncStoredEventsWithApi(data.data);

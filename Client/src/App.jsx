@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, NavLink, Navigate } from 'react-router-dom';
 import EventExplorer from './pages/EventExplorer';
 import Dashboard from './pages/Dashboard';
@@ -7,44 +7,42 @@ import Register from './pages/Register';
 import CreateProfile from './pages/CreateProfile';
 import ProfileSettings from './pages/ProfileSettings';
 import './App.css';
+import { API_BASE_URL, apiFetch } from './config/api';
 
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(() => {
-    return localStorage.getItem('isLoggedIn') === 'true';
-  });
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
 
-  const [currentUser, setCurrentUser] = useState(() => {
+  useEffect(() => {
     try {
-      const saved = localStorage.getItem('currentUser');
-      return saved ? JSON.parse(saved) : null;
+      localStorage.removeItem('currentUser');
+      localStorage.removeItem('tempUser');
+      localStorage.removeItem('city_pulse_registrations');
     } catch {
-      return null;
+      // Browser storage may be disabled; the API session remains authoritative.
     }
-  });
+    let active = true;
+    apiFetch(`${API_BASE_URL}/api/auth/me`).then(async (response) => {
+      if (!response.ok) return null;
+      const payload = await response.json();
+      return payload.success ? payload.data : null;
+    }).then((user) => {
+      if (active && user) { setCurrentUser(user); setIsLoggedIn(true); }
+    }).catch(() => {}).finally(() => { if (active) setAuthReady(true); });
+    return () => { active = false; };
+  }, []);
 
   const handleLogin = (userData) => {
-    const baseObj = userData || {
-      name: 'Logged In User',
-      email: 'user@example.com',
-      city: 'San Francisco',
-      role: 'Event Host & Attendee'
-    };
-    const userObj = {
-      ...baseObj,
-      id: baseObj.id || baseObj.email || `user-${Date.now()}`
-    };
-    
+    if (!userData?.id) return;
     setIsLoggedIn(true);
-    setCurrentUser(userObj);
-    localStorage.setItem('isLoggedIn', 'true');
-    localStorage.setItem('currentUser', JSON.stringify(userObj));
+    setCurrentUser(userData);
   };
 
   const handleLogout = () => {
+    apiFetch(`${API_BASE_URL}/api/auth/logout`, { method: 'POST' }).catch(() => {});
     setIsLoggedIn(false);
     setCurrentUser(null);
-    localStorage.removeItem('isLoggedIn');
-    localStorage.removeItem('currentUser');
   };
 
   return (
@@ -101,7 +99,7 @@ function App() {
         </nav>
 
         <main className="main-content">
-          <Routes>
+          {!authReady ? <p role="status">Checking your session…</p> : <Routes>
             <Route path="/" element={<Navigate to="/events" replace />} />
             <Route path="/events" element={<EventExplorer currentUser={currentUser} isLoggedIn={isLoggedIn} />} />
             
@@ -112,10 +110,10 @@ function App() {
             />
             
             <Route path="/login" element={<Login onLogin={handleLogin} />} />
-            <Route path="/register" element={<Register />} />
+            <Route path="/register" element={<Register onLogin={handleLogin} />} />
             <Route path="/profile" element={isLoggedIn ? <ProfileSettings currentUser={currentUser} onLogin={handleLogin} onLogout={handleLogout} /> : <Navigate to="/login" replace />} />
             <Route path="/create-profile" element={<CreateProfile onLogin={handleLogin} />} />
-          </Routes>
+          </Routes>}
         </main>
 
         <footer className="app-footer">

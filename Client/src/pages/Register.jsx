@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import Aurora from '../components/Aurora';
 import TextType from '../components/TextType';
-import { API_BASE_URL } from '../config/api';
+import { API_BASE_URL, apiFetch } from '../config/api';
 
-export default function Register() {
+export default function Register({ onLogin }) {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -28,8 +28,8 @@ export default function Register() {
     e.preventDefault();
     setErrorMsg('');
 
-    if (formData.password.length < 8) {
-      setErrorMsg('Password must be at least 8 characters long!');
+    if (formData.password.length < 12) {
+      setErrorMsg('Password must be at least 12 characters long!');
       return;
     }
     if (formData.password !== formData.confirmPassword) {
@@ -40,7 +40,7 @@ export default function Register() {
     setIsSubmitting(true);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/register`, {
+      const res = await apiFetch(`${API_BASE_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -57,23 +57,10 @@ export default function Register() {
         return;
       }
 
-      // Save registered user into temporary state & localStorage
-      localStorage.setItem('tempUser', JSON.stringify(data.data));
-      localStorage.setItem('currentUser', JSON.stringify(data.data));
+      if (onLogin) onLogin(data.data);
       navigate('/create-profile', { state: { ...data.data, from: location.state?.from } });
-    } catch (err) {
-      // Local fallback if server offline
-      const fallbackUser = {
-        id: `usr-${Date.now()}`,
-        name: formData.name,
-        email: formData.email,
-        password: formData.password,
-        city: 'San Francisco',
-        role: 'Event Host & Attendee'
-      };
-      localStorage.setItem('tempUser', JSON.stringify(fallbackUser));
-      localStorage.setItem('currentUser', JSON.stringify(fallbackUser));
-      navigate('/create-profile', { state: { ...fallbackUser, from: location.state?.from } });
+    } catch {
+      setErrorMsg('Unable to reach the City Pulse server. Your account was not created. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -131,15 +118,15 @@ export default function Register() {
             </div>
 
             <div className="form-group">
-              <label htmlFor="password">Password (Minimum 8 characters)</label>
+              <label htmlFor="password">Password (Minimum 12 characters)</label>
               <input
                 type="password"
                 id="password"
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                placeholder="Create a password (min 8 chars)"
-                minLength={8}
+                placeholder="Create a password (min 12 chars)"
+                minLength={12}
                 required
               />
             </div>

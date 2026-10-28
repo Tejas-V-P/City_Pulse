@@ -24,7 +24,7 @@ render.yaml Render blueprint for deploying the backend
 
 ## Local development
 
-Requires Node.js 18+ and a MongoDB connection (Atlas cluster or local `mongod`).
+Requires Node.js 20.19+ (or 22.12+) and a MongoDB connection (Atlas cluster or local `mongod`).
 
 ```bash
 # from the repo root
@@ -49,7 +49,7 @@ default in development.
 | `MONGO_URI` | Yes | MongoDB connection string (Atlas or self-hosted). |
 | `PORT` | No | Defaults to `5000`. |
 | `NODE_ENV` | No | `development` or `production`. |
-| `CLIENT_URL` | In production | Comma-separated origin(s) allowed to call the API (CORS). |
+| `CLIENT_URL` | In production | Comma-separated frontend origins allowed to call the API. |
 | `GEMINI_API_KEY` | For the AI Event Assistant | Google Gemini API key. |
 | `LLM_PROVIDER` | No | Defaults to `gemini`. |
 
@@ -57,14 +57,10 @@ default in development.
 
 | Variable | Required | Description |
 |---|---|---|
-| `VITE_API_URL` | In production | Base URL of the deployed backend, e.g. `https://city-pulse-api.onrender.com`. Falls back to `http://localhost:5000` if unset. |
+| `VITE_API_URL` | In production | Base URL of the deployed backend, e.g. `https://city-pulse-api.onrender.com`. Defaults to `http://localhost:5000` in development; required in production. |
 
-> ⚠️ **Security note:** a MongoDB credential was committed in an earlier
-> version of this project. The application now reads the connection string
-> only from `MONGO_URI`; Git history may still contain the old credential.
-> Rotate that credential in MongoDB Atlas and update your deployment secret.
-> Removing a secret from the current source does not invalidate it or erase it
-> from repository history.
+> **Security:** keep production credentials in Render/Vercel environment settings; never put them in client `VITE_*` variables. The application uses database-backed HttpOnly sessions, and password changes require the current password. If a credential was ever committed, rotate it even after removing it from Git history.
+> Accounts require MongoDB. Passwords must be at least 12 characters; sessions use a 12-hour HttpOnly cookie. The `Admin` role is assigned in the database and cannot be chosen during signup. Set `CLIENT_URL` to the exact frontend origin (no trailing slash); never add API credentials to `Client/.env*` or `VITE_*` variables.
 
 ## Deploying
 
@@ -78,8 +74,8 @@ the frontend's environment variable.
 2. In Render: **New → Blueprint**, point it at the repo. Render will read
    `render.yaml` at the repo root and create a `city-pulse-api` web service
    with root directory `server`, `npm install` as the build command, `npm
-   start` as the start command, and `/health` as the health check path.
-   (No blueprint? Create a Web Service manually with those same settings.)
+   start` as the start command, and `/health` as the health check path. Set
+   `MONGO_URI` and `CLIENT_URL` in the Render environment.
 3. In the service's **Environment** tab, set:
    - `MONGO_URI` — your MongoDB Atlas connection string
    - `CLIENT_URL` — your Vercel frontend URL (add this after step 2 below;
@@ -109,5 +105,5 @@ the frontend's environment variable.
 
 - **Frontend:** React 19, React Router, Vite, vanilla CSS (custom design
   system, no UI framework)
-- **Backend:** Express 4, Mongoose 9 (MongoDB), bcryptjs, helmet, express-rate-limit
+- **Backend:** Express 4, Mongoose 9 (MongoDB), bcryptjs, PostgreSQL (`pg`), Redis (`ioredis`)
 - **AI feature:** Google Gemini, via `server/controllers/aiController.js`

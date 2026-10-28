@@ -6,18 +6,14 @@ dotenv.config();
 const { Pool } = pg;
 
 // Initialize PostgreSQL Connection Pool using DATABASE_URL or individual parameters
+const hasPostgresConfig = Boolean(process.env.DATABASE_URL || (process.env.PGHOST && process.env.PGUSER && process.env.PGPASSWORD && process.env.PGDATABASE));
 const connectionConfig = process.env.DATABASE_URL
   ? { connectionString: process.env.DATABASE_URL }
-  : {
-      host: process.env.PGHOST || 'localhost',
-      user: process.env.PGUSER || 'postgres',
-      password: process.env.PGPASSWORD || 'postgres',
-      database: process.env.PGDATABASE || 'cityevent_db',
-      port: parseInt(process.env.PGPORT || '5432', 10),
-    };
+  : { host: process.env.PGHOST, user: process.env.PGUSER, password: process.env.PGPASSWORD, database: process.env.PGDATABASE, port: Number(process.env.PGPORT || 5432) };
 
 export const pool = new Pool({
   ...connectionConfig,
+  ...(process.env.NODE_ENV === 'production' ? { ssl: { rejectUnauthorized: true } } : {}),
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
 });
@@ -25,6 +21,7 @@ export const pool = new Pool({
 let isPostgresConnected = false;
 
 export const checkPostgresConnection = async () => {
+  if (!hasPostgresConfig) { isPostgresConnected = false; return false; }
   try {
     const client = await pool.connect();
     const res = await client.query('SELECT NOW()');
@@ -34,7 +31,7 @@ export const checkPostgresConnection = async () => {
     return true;
   } catch (err) {
     isPostgresConnected = false;
-    console.warn(`⚠️ PostgreSQL connection note: ${err.message}`);
+    console.warn('PostgreSQL connection failed.');
     return false;
   }
 };

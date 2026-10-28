@@ -89,7 +89,6 @@ server/
 │   ├── mongoSchemas.js     # Mongoose Schemas (User, Event, Registration, Tag)
 │   ├── mongoUserModel.js   # Mongoose User model wrapper
 │   ├── mongoEventModel.js  # Mongoose Event model wrapper
-│   ├── userModel.js        # Combined DB/Fallback user handler
 │   ├── eventModel.js       # Combined DB/Fallback event handler
 │   └── registrationModel.js# Combined DB/Fallback registration handler
 ├── routes/                 # Express Router endpoint definitions

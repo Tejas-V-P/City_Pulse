@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AIEventAssistantModal from './AIEventAssistantModal';
-import { API_BASE_URL } from '../config/api';
+import { API_BASE_URL, apiFetch } from '../config/api';
 import { addStoredCreatedEvent } from '../utils/storage';
 import './CreateEventModal.css';
 
@@ -29,19 +29,8 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess, onCreateS
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
-  const activeUser = currentUser || (() => {
-    try {
-      const saved = localStorage.getItem('currentUser');
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  })();
-
-  const isUserLoggedIn = Boolean(
-    activeUser?.name ||
-    localStorage.getItem('isLoggedIn') === 'true'
-  );
+  const activeUser = currentUser || null;
+  const isUserLoggedIn = Boolean(activeUser?.id);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -78,7 +67,7 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess, onCreateS
   const handleAutoSuggestTags = async () => {
     setIsSuggestingTags(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/tags/suggest`, {
+      const res = await apiFetch(`${API_BASE_URL}/api/tags/suggest`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -161,7 +150,7 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess, onCreateS
     };
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/events`, {
+      const res = await apiFetch(`${API_BASE_URL}/api/events`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -176,22 +165,8 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess, onCreateS
 
       addStoredCreatedEvent(data.data);
       handleSuccess(data.data);
-    } catch (err) {
-      if (!isUserLoggedIn || !formData.organizerId) {
-        setErrorMsg('You must be signed in to create and publish events.');
-        setIsSubmitting(false);
-        return;
-      }
-      const localNewEvent = {
-        id: `evt-${Date.now()}`,
-        ...formData,
-        price: parseFloat(formData.price) || 0,
-        isFree: parseFloat(formData.price) === 0,
-        registeredCount: 0,
-        createdAt: new Date().toISOString()
-      };
-      addStoredCreatedEvent(localNewEvent);
-      handleSuccess(localNewEvent);
+    } catch {
+      setErrorMsg('Unable to reach the City Pulse server. The event was not published.');
     } finally {
       setIsSubmitting(false);
     }

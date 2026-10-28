@@ -2,20 +2,15 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Aurora from '../components/Aurora';
 import TextType from '../components/TextType';
-import { API_BASE_URL } from '../config/api';
+import { API_BASE_URL, apiFetch } from '../config/api';
 
 export default function ProfileSettings({ currentUser, onLogin, onLogout }) {
-  const activeUser = currentUser || (() => {
-    try {
-      return JSON.parse(localStorage.getItem('currentUser')) || {};
-    } catch {
-      return {};
-    }
-  })();
+  const activeUser = currentUser || {};
 
   const [username, setUsername] = useState(activeUser.name || '');
   const [email, setEmail] = useState(activeUser.email || '');
   const [password, setPassword] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
   const [bio, setBio] = useState(activeUser.bio || '');
   const [occupation, setOccupation] = useState(activeUser.occupation || 'Student');
   const [location, setLocation] = useState(activeUser.city || 'San Francisco');
@@ -27,6 +22,7 @@ export default function ProfileSettings({ currentUser, onLogin, onLogout }) {
 
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
+    if (file && file.size > 180 * 1024) { setErrorMsg('Profile images must be 180 KB or smaller.'); return; }
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -41,52 +37,50 @@ export default function ProfileSettings({ currentUser, onLogin, onLogout }) {
     setSuccessMsg('');
     setErrorMsg('');
 
-    if (password && password.length < 8) {
-      setErrorMsg('Password must be at least 8 characters long!');
+    if (password && password.length < 12) {
+      setErrorMsg('Password must be at least 12 characters long!');
       return;
     }
 
-    const userId = activeUser.id || activeUser._id || 'temp';
+    const userId = activeUser.id;
     const payload = {
       name: username.trim() || 'User',
-      email: email.trim() || 'user@example.com',
+      email: email.trim(),
       city: location || 'San Francisco',
       bio: bio,
       occupation: occupation,
-      avatar: photoPreview || activeUser.avatar || null
+      avatar: photoPreview || activeUser.avatar || '',
+      currentPassword
     };
 
     if (password) {
       payload.password = password;
+      payload.currentPassword = currentPassword;
     }
 
     setIsSubmitting(true);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/profile/${encodeURIComponent(userId)}`, {
+      const res = await apiFetch(`${API_BASE_URL}/api/auth/profile/${encodeURIComponent(userId)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
       const data = await res.json();
-      if (res.ok && data.success) {
-        if (onLogin) onLogin(data.data);
-        setSuccessMsg('Profile updated successfully in database!');
-      } else {
-        const fallbackData = { ...activeUser, ...payload };
-        if (onLogin) onLogin(fallbackData);
-        setSuccessMsg('Profile updated successfully!');
+      if (!res.ok || !data.success) {
+        setErrorMsg(data.message || 'Profile update failed.');
+        return;
       }
-    } catch (err) {
-      const fallbackData = { ...activeUser, ...payload };
-      if (onLogin) onLogin(fallbackData);
-      setSuccessMsg('Profile updated successfully!');
+      if (onLogin) onLogin(data.data);
+      setSuccessMsg('Profile updated successfully.');
+      setPassword('');
+      setCurrentPassword('');
+      setTimeout(() => navigate('/dashboard'), 800);
+    } catch {
+      setErrorMsg('Unable to reach the City Pulse server. Your profile was not changed.');
     } finally {
       setIsSubmitting(false);
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 800);
     }
   };
 
@@ -176,14 +170,19 @@ export default function ProfileSettings({ currentUser, onLogin, onLogout }) {
             </div>
 
             <div className="form-group">
-              <label htmlFor="password">Change Password (Optional, min 8 chars)</label>
+              <label htmlFor="currentPassword">Current Password (required to change email or password)</label>
+              <input type="password" id="currentPassword" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} autoComplete="current-password" />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="password">Change Password (Optional, min 12 chars)</label>
               <input
                 type="password"
                 id="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter new password (leave blank to keep current)"
-                minLength={8}
+                minLength={12}
               />
             </div>
 

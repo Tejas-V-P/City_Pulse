@@ -5,12 +5,14 @@ const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true, index: true },
-    password: { type: String, required: true },
+    password: { type: String, required: true, select: false },
+    sessionTokenHash: { type: String, select: false },
+    sessionExpiresAt: { type: Date, select: false },
     city: { type: String, default: 'San Francisco' },
     bio: { type: String, default: '' },
     occupation: { type: String, default: 'Student' },
     avatar: { type: String, default: '' },
-    role: { type: String, default: 'Event Host & Attendee' }
+    role: { type: String, enum: ['Attendee', 'Organizer', 'Admin'], default: 'Attendee' }
   },
   { timestamps: true }
 );
