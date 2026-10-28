@@ -59,12 +59,12 @@ default in development.
 |---|---|---|
 | `VITE_API_URL` | In production | Base URL of the deployed backend, e.g. `https://city-pulse-api.onrender.com`. Falls back to `http://localhost:5000` if unset. |
 
-> ⚠️ **Security note:** an earlier version of this project had a real MongoDB
-> username/password committed directly in `server/.env` and hardcoded as a
-> fallback in `server/server.js`. Both have been removed and replaced with
-> placeholders. If that credential was ever pushed anywhere (a repo, a shared
-> zip, etc.), rotate the password in MongoDB Atlas before relying on this
-> project further — treat the old one as compromised.
+> ⚠️ **Security note:** a MongoDB credential was committed in an earlier
+> version of this project. The application now reads the connection string
+> only from `MONGO_URI`; Git history may still contain the old credential.
+> Rotate that credential in MongoDB Atlas and update your deployment secret.
+> Removing a secret from the current source does not invalidate it or erase it
+> from repository history.
 
 ## Deploying
 
