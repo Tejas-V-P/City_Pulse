@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import Aurora from '../components/Aurora';
 import TextType from '../components/TextType';
-import { API_BASE_URL } from '../config/api';
+import { API_BASE_URL, apiFetch } from '../config/api';
 
 export default function Login({ onLogin }) {
   const [email, setEmail] = useState('');
@@ -19,15 +19,15 @@ export default function Login({ onLogin }) {
     e.preventDefault();
     setErrorMsg('');
 
-    if (password.length < 8) {
-      setErrorMsg('Password must be at least 8 characters long!');
+    if (password.length < 12) {
+      setErrorMsg('Password must be at least 12 characters long!');
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
+      const res = await apiFetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -45,7 +45,7 @@ export default function Login({ onLogin }) {
 
       if (onLogin) onLogin(data.data);
       navigate(redirectTarget, { replace: true });
-    } catch (err) {
+    } catch {
       setErrorMsg('Unable to reach the City Pulse server. Please try again when the service is available.');
     } finally {
       setIsSubmitting(false);
@@ -107,14 +107,14 @@ export default function Login({ onLogin }) {
             </div>
 
             <div className="form-group">
-              <label htmlFor="password">Password (Minimum 8 characters)</label>
+              <label htmlFor="password">Password (Minimum 12 characters)</label>
               <input
                 type="password"
                 id="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password (min 8 chars)"
-                minLength={8}
+                placeholder="Enter your password (min 12 chars)"
+                minLength={12}
                 required
               />
             </div>

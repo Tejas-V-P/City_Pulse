@@ -66,7 +66,7 @@ export const generateEventWithAI = async (req, res) => {
           aiStructuredOutput = JSON.parse(rawText);
         }
       } catch (err) {
-        console.warn('LLM API call fallback to engineered structured output:', err.message);
+        console.warn('LLM API call failed; using structured fallback output.');
       }
     }
 
@@ -106,7 +106,7 @@ export const generateEventWithAI = async (req, res) => {
     res.status(500).json({
       status: 500,
       error: 'AI Generation Failed',
-      message: err.message
+      message: 'An unexpected error occurred.'
     });
   }
 };
@@ -136,6 +136,6 @@ export const getAIEventRecommendations = async (req, res) => {
       recommendations
     });
   } catch (err) {
-    res.status(500).json({ status: 500, error: err.message });
+    res.status(500).json({ status: 500, error: 'InternalServerError', message: 'An unexpected error occurred.' });
   }
 };

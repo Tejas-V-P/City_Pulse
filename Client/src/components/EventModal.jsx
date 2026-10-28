@@ -1,20 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import confetti from 'canvas-confetti';
-import { API_BASE_URL } from '../config/api';
-import { isUserRegistered, saveStoredRegistration } from '../utils/storage';
+import { API_BASE_URL, apiFetch } from '../config/api';
 import { getGoogleCalendarUrl, downloadIcsFile } from '../utils/calendarExport';
 import './EventModal.css';
 
 export default function EventModal({ event, onClose, onRegisterSuccess, currentUser }) {
   const navigate = useNavigate();
-  const activeUser = currentUser || (() => {
-    try {
-      return JSON.parse(localStorage.getItem('currentUser')) || {};
-    } catch {
-      return {};
-    }
-  })();
+  const activeUser = currentUser || {};
 
   const [name, setName] = useState(activeUser.name || '');
   const [email, setEmail] = useState(activeUser.email || '');
@@ -33,7 +26,7 @@ export default function EventModal({ event, onClose, onRegisterSuccess, currentU
   const [cardExpiry, setCardExpiry] = useState('12/28');
   const [cardCvc, setCardCvc] = useState('888');
 
-  const activeUserId = activeUser.id || activeUser._id || activeUser.email || 'user-1';
+  const activeUserId = activeUser.id || activeUser._id || '';
   const eventId = event?.id || event?._id;
 
   // Determine if the current user is the event organizer
@@ -55,18 +48,10 @@ export default function EventModal({ event, onClose, onRegisterSuccess, currentU
   useEffect(() => {
     if (!eventId || !activeUserId) return;
 
-    // Check local storage immediately
-    const localCheck = isUserRegistered(eventId, activeUserId);
-    if (localCheck.isRegistered) {
-      setIsAlreadyRegistered(true);
-      setExistingRegistration(localCheck.registration);
-      return;
-    }
-
     // Check backend registrations
     const verifyRegistration = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/events/user/${encodeURIComponent(activeUserId)}/registrations`);
+        const res = await apiFetch(`${API_BASE_URL}/api/events/user/${encodeURIComponent(activeUserId)}/registrations`);
         const data = await res.json();
         if (res.ok && data.success && Array.isArray(data.data)) {
           const match = data.data.find(r =>
@@ -76,7 +61,6 @@ export default function EventModal({ event, onClose, onRegisterSuccess, currentU
           if (match) {
             setIsAlreadyRegistered(true);
             setExistingRegistration(match);
-            saveStoredRegistration(match, event);
             return;
           }
         }
@@ -114,7 +98,7 @@ export default function EventModal({ event, onClose, onRegisterSuccess, currentU
 
   const acquireSeatHold = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/events/${eventId}/reserve`, {
+      const res = await apiFetch(`${API_BASE_URL}/api/events/${eventId}/reserve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: activeUserId })
@@ -137,7 +121,7 @@ export default function EventModal({ event, onClose, onRegisterSuccess, currentU
   const handleClose = () => {
     // Release hold if user closes without completing registration
     if (holdActive && !isAlreadyRegistered) {
-      fetch(`${API_BASE_URL}/api/events/${eventId}/release-reservation`, {
+      apiFetch(`${API_BASE_URL}/api/events/${eventId}/release-reservation`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: activeUserId })
@@ -169,7 +153,7 @@ export default function EventModal({ event, onClose, onRegisterSuccess, currentU
     setErrorMsg('');
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/events/${eventId}/register`, {
+      const res = await apiFetch(`${API_BASE_URL}/api/events/${eventId}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -193,28 +177,9 @@ export default function EventModal({ event, onClose, onRegisterSuccess, currentU
         origin: { y: 0.6 }
       });
 
-      saveStoredRegistration(data.data.registration, event);
       onRegisterSuccess(data.data.registration, event);
-    } catch (err) {
-      // Fallback local registration
-      const cityStr = event.city || 'EVT';
-      const cityPrefix = (cityStr.length >= 3 ? cityStr.slice(0, 3) : cityStr).toUpperCase();
-      const ticketCode = `TKT-${cityPrefix}-${Math.floor(10000 + Math.random() * 90000)}`;
-      const fallbackReg = {
-        id: `reg-${Date.now()}`,
-        eventId: String(eventId),
-        userId: activeUserId,
-        userName: name,
-        userEmail: email,
-        ticketCode,
-        registeredAt: new Date().toISOString(),
-        status: 'Confirmed',
-        event: event
-      };
-      setHoldActive(false);
-      confetti({ particleCount: 40, spread: 60 });
-      saveStoredRegistration(fallbackReg, event);
-      onRegisterSuccess(fallbackReg, event);
+    } catch {
+      setErrorMsg('Unable to reach the City Pulse server. Registration was not completed.');
     } finally {
       setIsSubmitting(false);
     }

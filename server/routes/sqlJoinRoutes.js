@@ -1,5 +1,6 @@
 import express from 'express';
 import { getPostgresStatus } from '../db/postgres.js';
+import { authenticate, requireAdmin } from '../middleware/auth.js';
 import {
   getRegistrationsWithDetailsSQL,
   getEventsWithOrganizersAndCapacitySQL,
@@ -23,7 +24,7 @@ const checkPostgresActive = (req, res, next) => {
 };
 
 // 1. INNER JOIN Endpoint
-router.get('/inner-join', checkPostgresActive, async (req, res, next) => {
+router.get('/inner-join', authenticate, requireAdmin, checkPostgresActive, async (req, res, next) => {
   try {
     const data = await getRegistrationsWithDetailsSQL();
     res.json({
@@ -39,7 +40,7 @@ router.get('/inner-join', checkPostgresActive, async (req, res, next) => {
 });
 
 // 2. LEFT JOIN Endpoint
-router.get('/left-join', checkPostgresActive, async (req, res, next) => {
+router.get('/left-join', authenticate, requireAdmin, checkPostgresActive, async (req, res, next) => {
   try {
     const data = await getEventsWithOrganizersAndCapacitySQL();
     res.json({
@@ -55,7 +56,7 @@ router.get('/left-join', checkPostgresActive, async (req, res, next) => {
 });
 
 // 3. RIGHT JOIN Endpoint
-router.get('/right-join', checkPostgresActive, async (req, res, next) => {
+router.get('/right-join', authenticate, requireAdmin, checkPostgresActive, async (req, res, next) => {
   try {
     const data = await getUsersWithRegistrationsSQL();
     res.json({
@@ -70,7 +71,7 @@ router.get('/right-join', checkPostgresActive, async (req, res, next) => {
 });
 
 // 4. FULL OUTER JOIN Endpoint
-router.get('/full-outer-join', checkPostgresActive, async (req, res, next) => {
+router.get('/full-outer-join', authenticate, requireAdmin, checkPostgresActive, async (req, res, next) => {
   try {
     const data = await getFullUserEventAuditSQL();
     res.json({

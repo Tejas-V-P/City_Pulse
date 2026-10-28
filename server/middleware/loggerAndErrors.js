@@ -3,7 +3,7 @@
 // 1. Custom HTTP Request Logger Middleware
 export const requestLogger = (req, res, next) => {
   const timestamp = new Date().toISOString();
-  console.log(`[${timestamp}] ${req.method} ${req.originalUrl}`);
+  console.log(`[${timestamp}] ${req.method} ${req.path}`);
   next();
 };
 
@@ -46,14 +46,12 @@ export const validateEventInput = (req, res, next) => {
 
 // 3. Centralized Server-Side Error Handling Middleware
 export const errorHandler = (err, req, res, next) => {
-  console.error('💥 Centralized Error Handler Caught Error:', err.message || err);
-
-  const statusCode = err.statusCode || res.statusCode || 500;
-  
+  const statusCode = err.statusCode && err.statusCode < 500 ? err.statusCode : 500;
+  if (statusCode === 500) console.error('Request failed with an internal server error.');
+  if (res.headersSent) return next(err);
   res.status(statusCode).json({
     status: statusCode,
-    error: err.name || 'InternalServerError',
-    message: err.message || 'An unexpected error occurred on the server.',
-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    error: statusCode === 500 ? 'InternalServerError' : (err.name || 'RequestError'),
+    message: statusCode === 500 ? 'An unexpected error occurred.' : (err.message || 'The request could not be completed.')
   });
 };

@@ -1,17 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import TicketPassModal from '../components/TicketPassModal';
 import CreateEventModal from '../components/CreateEventModal';
 import AttendeeRosterModal from '../components/AttendeeRosterModal';
 import CheckInScannerModal from '../components/CheckInScannerModal';
-import { API_BASE_URL } from '../config/api';
-import {
-  getStoredRegistrations,
-  getStoredOrganizedEvents,
-  saveStoredRegistration,
-  cancelStoredRegistration,
-  deleteStoredEvent,
-  addStoredCreatedEvent
-} from '../utils/storage';
+import { API_BASE_URL, apiFetch } from '../config/api';
+import { deleteStoredEvent } from '../utils/storage';
 import './Dashboard.css';
 
 export default function Dashboard({ currentUser }) {
@@ -22,75 +15,42 @@ export default function Dashboard({ currentUser }) {
   const [showScannerModal, setShowScannerModal] = useState(false);
   const [scannerEventId, setScannerEventId] = useState(null);
 
-  // Dynamic User Profile details loaded from props or localStorage
-  const [user, setUser] = useState(() => {
-    if (currentUser && currentUser.name) return currentUser;
-    try {
-      const saved = localStorage.getItem('currentUser');
-      if (saved) return JSON.parse(saved);
-    } catch {
-      // fallback
-    }
-    return {
-      name: 'Logged In User',
-      email: 'user@example.com',
-      city: 'San Francisco',
-      role: 'Event Host & Attendee'
-    };
-  });
+  const user = currentUser || {};
 
-  useEffect(() => {
-    if (currentUser && currentUser.name) {
-      setUser(currentUser);
-    }
-  }, [currentUser]);
-
-  const userId = user.id || user._id || user.email || 'user-1';
+  const userId = user.id || user._id || '';
 
   // Initialize immediately from persistent storage (no blank flash, survives reloads!)
-  const [userRegistrations, setUserRegistrations] = useState(() => {
-    return getStoredRegistrations(userId);
-  });
+  const [userRegistrations, setUserRegistrations] = useState([]);
 
-  const [organizedEvents, setOrganizedEvents] = useState(() => {
-    return getStoredOrganizedEvents(userId);
-  });
+  const [organizedEvents, setOrganizedEvents] = useState([]);
 
   const fetchData = async () => {
     try {
       // 1. Fetch user registered tickets
-      const regRes = await fetch(`${API_BASE_URL}/api/events/user/${encodeURIComponent(userId)}/registrations`);
+      const regRes = await apiFetch(`${API_BASE_URL}/api/events/user/${encodeURIComponent(userId)}/registrations`);
       const regData = await regRes.json();
       if (regRes.ok && regData.success && Array.isArray(regData.data)) {
-        for (const r of regData.data) {
-          saveStoredRegistration(r, r.event);
-        }
+        setUserRegistrations(regData.data);
       }
     } catch {
-      // ignore network errors, rely on storage
+      setUserRegistrations([]);
     }
 
     try {
       // 2. Fetch user organized events
-      const evtRes = await fetch(`${API_BASE_URL}/api/events?organizerId=${encodeURIComponent(userId)}`);
+      const evtRes = await apiFetch(`${API_BASE_URL}/api/events?organizerId=${encodeURIComponent(userId)}`);
       const evtData = await evtRes.json();
       if (evtRes.ok && evtData.success && Array.isArray(evtData.data)) {
-        for (const e of evtData.data) {
-          addStoredCreatedEvent(e);
-        }
+        setOrganizedEvents(evtData.data);
       }
     } catch {
-      // ignore network errors, rely on storage
+      setOrganizedEvents([]);
     }
 
-    // Update state from storage (merged)
-    setUserRegistrations(getStoredRegistrations(userId));
-    setOrganizedEvents(getStoredOrganizedEvents(userId));
+
   };
 
   useEffect(() => {
-    setUserRegistrations(getStoredRegistrations(userId));
-    setOrganizedEvents(getStoredOrganizedEvents(userId));
     fetchData();
   }, [userId]);
 
@@ -98,26 +58,25 @@ export default function Dashboard({ currentUser }) {
     if (!window.confirm('Are you sure you want to cancel this event registration?')) return;
 
     try {
-      await fetch(`${API_BASE_URL}/api/events/user/${encodeURIComponent(userId)}/registrations/${regId}`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/events/user/${encodeURIComponent(userId)}/registrations/${regId}`, {
         method: 'DELETE'
       });
+      if (response.ok) setUserRegistrations((previous) => previous.filter((registration) => registration.id !== regId));
     } catch {
-      // ignore API failure, remove locally
+      // Keep the server's registration visible when cancellation fails.
     }
-
-    cancelStoredRegistration(regId, userId);
-    setUserRegistrations(getStoredRegistrations(userId));
   };
 
   const handleDeleteEvent = async (eventId) => {
     if (!window.confirm('Are you sure you want to delete this hosted event? All attendee registrations will be removed.')) return;
 
     try {
-      await fetch(`${API_BASE_URL}/api/events/${encodeURIComponent(eventId)}`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/events/${encodeURIComponent(eventId)}`, {
         method: 'DELETE'
       });
+      if (!response.ok) return;
     } catch {
-      // ignore API failure, remove locally
+      return;
     }
 
     deleteStoredEvent(eventId);
@@ -127,9 +86,8 @@ export default function Dashboard({ currentUser }) {
     fetchData();
   };
 
-  const handleCreateSuccess = (newEvent) => {
+  const handleCreateSuccess = () => {
     setShowCreateModal(false);
-    addStoredCreatedEvent(newEvent);
     setActiveTab('organized');
     fetchData();
   };

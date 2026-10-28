@@ -445,6 +445,7 @@ export function syncStoredEventsWithApi(apiEvents) {
 
 export function getStoredRegistrations(userId) {
   try {
+    localStorage.removeItem(STORAGE_KEYS.REGISTRATIONS);
     const raw = localStorage.getItem(STORAGE_KEYS.REGISTRATIONS);
     const list = raw ? JSON.parse(raw) : [];
     if (!Array.isArray(list)) return [];
@@ -458,101 +459,19 @@ export function getStoredRegistrations(userId) {
   }
 }
 
-export function saveStoredRegistration(registration, event) {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.REGISTRATIONS);
-    const list = raw ? JSON.parse(raw) : [];
-
-    const regToSave = {
-      ...registration,
-      id: registration.id || `reg-${Date.now()}`,
-      eventId: String(registration.eventId || event?.id),
-      registeredAt: registration.registeredAt || new Date().toISOString(),
-      status: registration.status || 'Confirmed',
-      event: event ? {
-        id: String(event.id || event._id),
-        title: event.title,
-        city: event.city || 'San Francisco',
-        category: event.category || 'Technology',
-        venue: event.venue,
-        date: event.date,
-        time: event.time,
-        price: event.price,
-        isFree: event.isFree,
-        image: event.image
-      } : registration.event
-    };
-
-    // Avoid duplicates
-    const filtered = list.filter(r => 
-      !(String(r.eventId) === String(regToSave.eventId) && String(r.userId) === String(regToSave.userId))
-    );
-
-    const updatedList = [regToSave, ...filtered];
-    localStorage.setItem(STORAGE_KEYS.REGISTRATIONS, JSON.stringify(updatedList));
-
-    // Increment registeredCount in local events
-    const currentEvents = getStoredEvents();
-    const eventIdStr = String(regToSave.eventId);
-    const updatedEvents = currentEvents.map(e => {
-      if (String(e.id || e._id) === eventIdStr) {
-        return { ...e, registeredCount: (e.registeredCount || 0) + 1 };
-      }
-      return e;
-    });
-    saveStoredEvents(updatedEvents);
-
-    return regToSave;
-  } catch (err) {
-    console.warn('Failed to save registration:', err);
-    return registration;
-  }
+export function saveStoredRegistration(registration, _event) {
+  try { localStorage.removeItem(STORAGE_KEYS.REGISTRATIONS); } catch { /* Storage may be disabled. */ }
+  return registration;
 }
 
-export function cancelStoredRegistration(regId, userId) {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.REGISTRATIONS);
-    const list = raw ? JSON.parse(raw) : [];
-    const regIdStr = String(regId);
-
-    const removed = list.find(r => String(r.id) === regIdStr);
-    const updated = list.filter(r => String(r.id) !== regIdStr);
-    localStorage.setItem(STORAGE_KEYS.REGISTRATIONS, JSON.stringify(updated));
-
-    // Decrement registeredCount in local events
-    if (removed && removed.eventId) {
-      const currentEvents = getStoredEvents();
-      const updatedEvents = currentEvents.map(e => {
-        if (String(e.id || e._id) === String(removed.eventId)) {
-          return { ...e, registeredCount: Math.max(0, (e.registeredCount || 1) - 1) };
-        }
-        return e;
-      });
-      saveStoredEvents(updatedEvents);
-    }
-
-    return updated;
-  } catch (err) {
-    console.warn('Failed to cancel stored registration:', err);
-    return getStoredRegistrations(userId);
-  }
+export function cancelStoredRegistration(_regId, _userId) {
+  try { localStorage.removeItem(STORAGE_KEYS.REGISTRATIONS); } catch { /* Storage may be disabled. */ }
+  return [];
 }
 
-export function isUserRegistered(eventId, userId) {
-  if (!eventId || !userId) return { isRegistered: false, registration: null };
-  const all = getStoredRegistrations();
-  const evtIdStr = String(eventId);
-  const uIdStr = String(userId);
-
-  const found = all.find(r => 
-    String(r.eventId) === evtIdStr && 
-    (String(r.userId) === uIdStr || (r.userEmail && r.userEmail === uIdStr))
-  );
-
-  return {
-    isRegistered: Boolean(found),
-    registration: found || null
-  };
+export function isUserRegistered(_eventId, _userId) {
+  try { localStorage.removeItem(STORAGE_KEYS.REGISTRATIONS); } catch { /* Storage may be disabled. */ }
+  return { isRegistered: false, registration: null };
 }
 
 export function getStoredAttendeesForEvent(eventId) {

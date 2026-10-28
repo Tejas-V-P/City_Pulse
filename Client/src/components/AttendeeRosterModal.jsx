@@ -1,16 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../config/api';
+import { useState, useEffect } from 'react';
+import { API_BASE_URL, apiFetch } from '../config/api';
 import './AttendeeRosterModal.css';
 
 export default function AttendeeRosterModal({ event, onClose, onDeleteEvent, currentUser }) {
-  const activeUser = currentUser || (() => {
-    try {
-      const saved = localStorage.getItem('currentUser');
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  })();
+  const activeUser = currentUser || {};
 
   const [attendees, setAttendees] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -22,13 +15,7 @@ export default function AttendeeRosterModal({ event, onClose, onDeleteEvent, cur
 
   const eventId = event?.id || event?._id;
 
-  const authHeaders = {
-    'Content-Type': 'application/json',
-    'x-user-id': activeUser?.id || activeUser?._id || '',
-    'x-user-email': activeUser?.email || '',
-    'x-user-role': activeUser?.role || 'Attendee',
-    'x-user-name': activeUser?.name || ''
-  };
+  const authHeaders = { 'Content-Type': 'application/json' };
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -41,7 +28,7 @@ export default function AttendeeRosterModal({ event, onClose, onDeleteEvent, cur
     setIsForbidden(false);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/events/${encodeURIComponent(eventId)}/attendees`, {
+      const res = await apiFetch(`${API_BASE_URL}/api/events/${encodeURIComponent(eventId)}/attendees`, {
         headers: authHeaders
       });
 
@@ -75,7 +62,7 @@ export default function AttendeeRosterModal({ event, onClose, onDeleteEvent, cur
     setActionInProgressId(attendeeKey);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/events/${encodeURIComponent(eventId)}/attendees/${encodeURIComponent(attendeeKey)}`, {
+      const res = await apiFetch(`${API_BASE_URL}/api/events/${encodeURIComponent(eventId)}/attendees/${encodeURIComponent(attendeeKey)}`, {
         method: 'PUT',
         headers: authHeaders,
         body: JSON.stringify({ status: newStatus })
@@ -111,7 +98,7 @@ export default function AttendeeRosterModal({ event, onClose, onDeleteEvent, cur
     setActionInProgressId(attendeeKey);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/events/${encodeURIComponent(eventId)}/attendees/${encodeURIComponent(attendeeKey)}`, {
+      const res = await apiFetch(`${API_BASE_URL}/api/events/${encodeURIComponent(eventId)}/attendees/${encodeURIComponent(attendeeKey)}`, {
         method: 'DELETE',
         headers: authHeaders
       });

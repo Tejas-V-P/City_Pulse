@@ -2,17 +2,11 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Aurora from '../components/Aurora';
 import TextType from '../components/TextType';
-import { API_BASE_URL } from '../config/api';
+import { API_BASE_URL, apiFetch } from '../config/api';
 
 export default function CreateProfile({ onLogin }) {
   const locationState = useLocation().state || {};
-  const tempUser = (() => {
-    try {
-      return JSON.parse(localStorage.getItem('tempUser')) || {};
-    } catch {
-      return {};
-    }
-  })();
+  const tempUser = locationState;
 
   const [username, setUsername] = useState(tempUser.name || locationState.name || '');
   const [bio, setBio] = useState(tempUser.bio || '');
@@ -20,10 +14,12 @@ export default function CreateProfile({ onLogin }) {
   const [location, setLocation] = useState(tempUser.city || 'San Francisco');
   const [photoPreview, setPhotoPreview] = useState(tempUser.avatar || null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
   const navigate = useNavigate();
 
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
+    if (file && file.size > 180 * 1024) { setErrorMsg('Profile images must be 180 KB or smaller.'); return; }
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -35,46 +31,29 @@ export default function CreateProfile({ onLogin }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrorMsg('');
+    const baseUser = tempUser.id ? tempUser : locationState;
+    if (!baseUser?.id) { setErrorMsg('Your account session is missing. Please sign in again.'); return; }
     setIsSubmitting(true);
-
-    const baseUser = tempUser.name ? tempUser : (locationState.name ? locationState : {});
-    const userData = {
-      ...baseUser,
-      id: baseUser.id || baseUser._id || `user-${Date.now()}`,
-      name: username.trim() || baseUser.name || 'User',
-      email: baseUser.email || 'user@example.com',
-      city: location || 'San Francisco',
-      bio: bio,
-      occupation: occupation,
-      role: 'Event Host & Attendee',
-      avatar: photoPreview || null
-    };
-
-    // Update in database if userId exists
-    if (userData.id && userData.id !== 'user-1' && !userData.id.startsWith('user-')) {
-      try {
-        await fetch(`${API_BASE_URL}/api/auth/profile/${encodeURIComponent(userData.id)}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: userData.name,
-            city: userData.city,
-            bio: userData.bio,
-            occupation: userData.occupation,
-            avatar: userData.avatar
-          })
-        });
-      } catch {
-        // ignore
-      }
+    try {
+      const res = await apiFetch(`${API_BASE_URL}/api/auth/profile/${encodeURIComponent(baseUser.id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: username.trim(), city: location.trim(), bio, occupation, avatar: photoPreview || ''
+        })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || 'Profile could not be saved.');
+      if (onLogin) onLogin(data.data);
+      const redirectTarget = locationState?.from || '/dashboard';
+      navigate(redirectTarget, { replace: true });
+    } catch (err) {
+      setErrorMsg(err.message || 'Unable to reach the City Pulse server.');
+    } finally {
+      setIsSubmitting(false);
     }
-
-    if (onLogin) onLogin(userData);
-    setIsSubmitting(false);
-    const redirectTarget = locationState?.from || '/dashboard';
-    navigate(redirectTarget, { replace: true });
   };
-
   return (
     <div className="auth-page-wrapper">
       <Aurora
@@ -94,6 +73,7 @@ export default function CreateProfile({ onLogin }) {
             cursorCharacter="|"
           />
 
+          {errorMsg && <div role="alert" className="form-error">{errorMsg}</div>}
           <form onSubmit={handleSubmit}>
             {/* Profile Photo Upload (Optional) */}
             <div className="form-group photo-upload-group">

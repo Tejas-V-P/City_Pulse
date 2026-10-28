@@ -37,6 +37,8 @@ const isMongoConnected = () => mongoose.connection.readyState === 1;
 /**
  * Haversine formula for calculating distance in kilometers between two geo-coordinates
  */
+const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 function calculateDistanceKm(lat1, lon1, lat2, lon2) {
   if (lat1 === undefined || lon1 === undefined || lat2 === undefined || lon2 === undefined) return 999999;
   const R = 6371; // Earth's radius in km
@@ -63,11 +65,11 @@ export const getAllEvents = async (req, res) => {
       let query = {};
 
       if (city && city !== 'All Cities') {
-        query.city = { $regex: new RegExp(`^${city}$`, 'i') };
+        query.city = { $regex: new RegExp(`^${escapeRegex(city)}$`, 'i') };
       }
 
       if (category && category !== 'All') {
-        query.category = { $regex: new RegExp(`^${category}$`, 'i') };
+        query.category = { $regex: new RegExp(`^${escapeRegex(category)}$`, 'i') };
       }
 
       if (tags) {
@@ -83,7 +85,7 @@ export const getAllEvents = async (req, res) => {
           $or: [
             { organizerId: orgTarget },
             { organizerEmail: orgTarget.toLowerCase() },
-            { organizerName: new RegExp(`^${orgTarget}$`, 'i') }
+            { organizerName: new RegExp(`^${escapeRegex(orgTarget)}$`, 'i') }
           ]
         });
       }
@@ -92,10 +94,10 @@ export const getAllEvents = async (req, res) => {
         const q = search.trim();
         andClauses.push({
           $or: [
-            { title: { $regex: q, $options: 'i' } },
-            { description: { $regex: q, $options: 'i' } },
-            { venue: { $regex: q, $options: 'i' } },
-            { tagline: { $regex: q, $options: 'i' } }
+            { title: { $regex: escapeRegex(q), $options: 'i' } },
+            { description: { $regex: escapeRegex(q), $options: 'i' } },
+            { venue: { $regex: escapeRegex(q), $options: 'i' } },
+            { tagline: { $regex: escapeRegex(q), $options: 'i' } }
           ]
         });
       }
@@ -107,6 +109,7 @@ export const getAllEvents = async (req, res) => {
       const rawEvents = await Event.find(query).sort({ date: 1 }).exec();
       eventsList = rawEvents.map(e => {
         const obj = e.toObject();
+        delete obj.organizerEmail;
         const coords = obj.coordinates && obj.coordinates.lat ? obj.coordinates : getCityCoordinates(obj.city);
         return {
           ...obj,
@@ -159,12 +162,11 @@ export const getAllEvents = async (req, res) => {
     return res.status(200).json({
       status: 200,
       success: true,
-      database: isMongoConnected() ? 'MongoDB Mongoose' : 'In-Memory Store',
       count: eventsList.length,
       data: eventsList
     });
   } catch (err) {
-    res.status(500).json({ status: 500, error: 'DatabaseError', message: err.message });
+    res.status(500).json({ status: 500, error: 'InternalServerError', message: 'An unexpected error occurred.' });
   }
 };
 
@@ -182,6 +184,7 @@ export const getEventDetails = async (req, res) => {
       }
       attendeesCount = await Registration.countDocuments({ eventId: id });
       const obj = doc.toObject();
+      delete obj.organizerEmail;
       event = {
         ...obj,
         id: doc._id.toString(),
@@ -194,6 +197,8 @@ export const getEventDetails = async (req, res) => {
     } else {
       event = getMemoryEventById(id);
       if (!event) return res.status(404).json({ status: 404, error: 'Event not found' });
+      event = { ...event };
+      delete event.organizerEmail;
       attendeesCount = event.registeredCount || 0;
     }
 
@@ -210,64 +215,17 @@ export const getEventDetails = async (req, res) => {
       }
     });
   } catch (err) {
-    res.status(500).json({ status: 500, error: 'DatabaseError', message: err.message });
+    res.status(500).json({ status: 500, error: 'InternalServerError', message: 'An unexpected error occurred.' });
   }
 };
 
 // Helper: Verify if requester is authorized as Event Host or Admin
 export const isAuthorizedForEvent = (event, req) => {
-  if (!event) return false;
-
-  const requesterId = String(
-    req.headers['x-user-id'] || 
-    req.query.userId || 
-    req.body.userId || 
-    req.user?.id || 
-    req.user?._id || 
-    ''
-  ).trim();
-
-  const requesterEmail = String(
-    req.headers['x-user-email'] || 
-    req.query.userEmail || 
-    req.body.userEmail || 
-    req.user?.email || 
-    ''
-  ).toLowerCase().trim();
-
-  const requesterRole = String(
-    req.headers['x-user-role'] || 
-    req.query.role || 
-    req.body.role || 
-    req.user?.role || 
-    ''
-  ).toLowerCase().trim();
-
-  const requesterName = String(
-    req.headers['x-user-name'] || 
-    req.query.userName || 
-    req.body.userName || 
-    req.user?.name || 
-    ''
-  ).toLowerCase().trim();
-
-  // 1. Admin always has full management permissions
-  if (requesterRole === 'admin') return true;
-
-  // 2. Event Organizer permissions
-  const eventOrganizerId = String(event.organizerId || '').trim();
-  const eventOrganizerName = String(event.organizerName || '').toLowerCase().trim();
-  const eventOrganizerEmail = String(event.organizerEmail || '').toLowerCase().trim();
-
-  // Match by User ID
-  if (requesterId && eventOrganizerId && requesterId === eventOrganizerId) return true;
-  // Match by Email (either stored in organizerEmail or organizerId)
-  if (requesterEmail && eventOrganizerId && requesterEmail === eventOrganizerId.toLowerCase()) return true;
-  if (requesterEmail && eventOrganizerEmail && requesterEmail === eventOrganizerEmail) return true;
-  // Match by Name
-  if (requesterName && eventOrganizerName && requesterName === eventOrganizerName) return true;
-
-  return false;
+  if (!event || !req.user?.id) return false;
+  if (req.user.role === 'Admin') return true;
+  const ownerId = String(event.organizerId || '').trim();
+  const ownerEmail = String(event.organizerEmail || '').trim().toLowerCase();
+  return ownerId === req.user.id || ownerId.toLowerCase() === req.user.email?.toLowerCase() || ownerEmail === req.user.email?.toLowerCase();
 };
 
 // 3. GET /api/events/:id/attendees (Protected: Host or Admin only)
@@ -292,7 +250,7 @@ export const getEventAttendees = async (req, res) => {
         status: 403,
         success: false,
         error: 'Forbidden',
-        message: `Access Denied: Only the verified event organizer ("${event.organizerName || 'Host'}") or an administrator has permission to view the attendee roster.`
+        message: 'Only the event host or an administrator can view the attendee roster.'
       });
     }
 
@@ -317,7 +275,7 @@ export const getEventAttendees = async (req, res) => {
       data: memoryAttendees
     });
   } catch (err) {
-    res.status(500).json({ status: 500, error: err.message });
+    res.status(500).json({ status: 500, error: 'InternalServerError', message: 'An unexpected error occurred.' });
   }
 };
 
@@ -347,21 +305,23 @@ export const updateAttendeeStatus = async (req, res) => {
       });
     }
 
+    const allowedStatuses = ['Confirmed', 'Checked-In', 'Cancelled'];
+    if (!allowedStatuses.includes(status || 'Checked-In')) return res.status(400).json({ success: false, message: 'Invalid attendee status.' });
     const newStatus = status || 'Checked-In';
     const checkedInAt = newStatus === 'Checked-In' ? new Date() : null;
 
     if (isMongoConnected()) {
       let reg = null;
       if (mongoose.Types.ObjectId.isValid(attendeeId)) {
-        reg = await Registration.findByIdAndUpdate(
-          attendeeId,
+        reg = await Registration.findOneAndUpdate(
+          { _id: attendeeId, eventId: id },
           { status: newStatus, ...(checkedInAt ? { checkedInAt } : {}) },
           { new: true }
         ).exec();
       }
       if (!reg) {
         reg = await Registration.findOneAndUpdate(
-          { ticketCode: attendeeId },
+          { ticketCode: attendeeId, eventId: id },
           { status: newStatus, ...(checkedInAt ? { checkedInAt } : {}) },
           { new: true }
         ).exec();
@@ -380,7 +340,6 @@ export const updateAttendeeStatus = async (req, res) => {
           eventId: id,
           attendeeId,
           status: newStatus,
-          attendeeName: reg.userName
         });
 
         return res.status(200).json({
@@ -395,7 +354,7 @@ export const updateAttendeeStatus = async (req, res) => {
     // Memory fallback
     const regs = getMemoryRegistrationsByEvent(id);
     const reg = regs.find(r => r.id === attendeeId || r._id === attendeeId || r.ticketCode === attendeeId);
-    if (!reg) return res.status(404).json({ status: 404, error: 'Attendee not found' });
+    if (!reg || String(reg.eventId) !== String(id)) return res.status(404).json({ status: 404, error: 'Attendee not found' });
     reg.status = newStatus;
     if (checkedInAt) reg.checkedInAt = checkedInAt.toISOString();
 
@@ -406,7 +365,7 @@ export const updateAttendeeStatus = async (req, res) => {
       data: reg
     });
   } catch (err) {
-    res.status(500).json({ status: 500, error: err.message });
+    res.status(500).json({ status: 500, error: 'InternalServerError', message: 'An unexpected error occurred.' });
   }
 };
 
@@ -427,16 +386,16 @@ export const removeEventAttendee = async (req, res) => {
     }
 
     const isHost = isAuthorizedForEvent(event, req);
-    const requesterId = String(req.headers['x-user-id'] || req.query.userId || req.body.userId || '').trim();
-    const requesterEmail = String(req.headers['x-user-email'] || req.query.userEmail || req.body.userEmail || '').toLowerCase().trim();
+    const requesterId = String(req.user.id || '').trim();
+    const requesterEmail = String(req.user.email || '').toLowerCase().trim();
 
     if (isMongoConnected()) {
       let reg = null;
       if (mongoose.Types.ObjectId.isValid(attendeeId)) {
-        reg = await Registration.findById(attendeeId).exec();
+        reg = await Registration.findOne({ _id: attendeeId, eventId: id }).exec();
       }
       if (!reg) {
-        reg = await Registration.findOne({ ticketCode: attendeeId }).exec();
+        reg = await Registration.findOne({ ticketCode: attendeeId, eventId: id }).exec();
       }
 
       if (reg) {
@@ -469,7 +428,7 @@ export const removeEventAttendee = async (req, res) => {
     // Memory fallback
     const regs = getMemoryRegistrationsByEvent(id);
     const reg = regs.find(r => r.id === attendeeId || r._id === attendeeId || r.ticketCode === attendeeId);
-    if (!reg) return res.status(404).json({ status: 404, error: 'Registration not found' });
+    if (!reg || String(reg.eventId) !== String(id)) return res.status(404).json({ status: 404, error: 'Registration not found' });
 
     const isSelf = (requesterId && String(reg.userId) === requesterId) ||
                    (requesterEmail && reg.userEmail.toLowerCase() === requesterEmail);
@@ -493,92 +452,53 @@ export const removeEventAttendee = async (req, res) => {
       message: 'Attendee successfully removed from event roster.'
     });
   } catch (err) {
-    res.status(500).json({ status: 500, error: err.message });
+    res.status(500).json({ status: 500, error: 'InternalServerError', message: 'An unexpected error occurred.' });
   }
 };
 
 // 4. POST /api/events (MongoDB CRUD: Event.create, synced with memory store)
 export const createNewEvent = async (req, res) => {
   try {
-    const { 
-      title, 
-      category, 
-      city, 
-      venue, 
-      date, 
-      organizerName = 'Event Host', 
-      organizerId = 'user-1',
-      organizerEmail = ''
-    } = req.body;
-
-    if (!title || !category || !city || !venue || !date) {
-      return res.status(400).json({
-        status: 400,
-        error: 'ValidationError',
-        message: 'Required fields: title, category, city, venue, date.'
-      });
+    const body = req.body || {};
+    const { title, category, city, venue, date } = body;
+    if (![title, category, city, venue, date].every(value => typeof value === 'string' && value.trim()) ||
+        title.length > 160 || city.length > 120 || venue.length > 200 || category.length > 80) {
+      return res.status(400).json({ success: false, message: 'Enter valid title, category, city, venue, and date values.' });
     }
-
-    const coords = req.body.coordinates || getCityCoordinates(city);
-
+    const price = Number(body.price || 0);
+    const capacity = Number(body.capacity || 100);
+    if (!Number.isFinite(price) || price < 0 || price > 100000 || !Number.isInteger(capacity) || capacity < 1 || capacity > 100000) {
+      return res.status(400).json({ success: false, message: 'Price or capacity is invalid.' });
+    }
+    const eventData = {
+      title: title.trim(), category: category.trim(), city: city.trim(), venue: venue.trim(), date: date.trim(),
+      tagline: typeof body.tagline === 'string' ? body.tagline.trim().slice(0, 200) : '',
+      time: typeof body.time === 'string' ? body.time.trim().slice(0, 80) : '10:00 AM - 04:00 PM',
+      price, isFree: price === 0, capacity, registeredCount: 0,
+      image: typeof body.image === 'string' ? body.image.slice(0, 2048) : undefined,
+      description: typeof body.description === 'string' ? body.description.trim().slice(0, 5000) : '',
+      agenda: Array.isArray(body.agenda) ? body.agenda.slice(0, 30).map(item => ({ time: String(item?.time || '').slice(0, 80), title: String(item?.title || '').slice(0, 200) })) : [],
+      tags: Array.isArray(body.tags) ? body.tags.slice(0, 20).map(tag => String(tag).trim().slice(0, 40)) : [],
+      coordinates: getCityCoordinates(city),
+      organizerName: req.user.name, organizerId: req.user.id, organizerEmail: req.user.email
+    };
     if (isMongoConnected()) {
-      const created = await Event.create({
-        ...req.body,
-        city: city.trim(),
-        category: category.trim(),
-        venue: venue.trim(),
-        coordinates: coords,
-        organizerName: organizerName.trim(),
-        organizerId: organizerId.trim(),
-        organizerEmail: organizerEmail.trim().toLowerCase()
-      });
-
-      const formatted = {
-        ...created.toObject(),
-        id: created._id.toString()
-      };
-
-      // Also sync to memory store with the same ID
-      createMemoryEvent({
-        ...req.body,
-        id: created._id.toString(),
-        coordinates: coords,
-        organizerName: organizerName.trim(),
-        organizerId: organizerId.trim(),
-        organizerEmail: organizerEmail.trim().toLowerCase()
-      });
-
-      // Broadcast new event immediately to all active connected browsers
-      broadcastSSE('EVENT_CREATED', formatted);
-
-      return res.status(201).json({
-        status: 201,
-        success: true,
-        database: 'MongoDB Mongoose',
-        message: 'Event created and broadcasted to all users successfully!',
-        data: formatted
-      });
+      const created = await Event.create(eventData);
+      const formatted = { ...created.toObject(), id: created._id.toString() };
+      const publicEvent = { ...formatted };
+      delete publicEvent.organizerEmail;
+      createMemoryEvent({ ...eventData, id: created._id.toString() });
+      broadcastSSE('EVENT_CREATED', publicEvent);
+      return res.status(201).json({ success: true, data: formatted });
     }
-
-    // Sync to memory store if Mongo is not connected
-    const memEvent = createMemoryEvent({
-      ...req.body,
-      coordinates: coords,
-      organizerName: organizerName.trim(),
-      organizerId: organizerId.trim(),
-      organizerEmail: organizerEmail.trim().toLowerCase()
-    });
-
-    broadcastSSE('EVENT_CREATED', memEvent);
-
-    return res.status(201).json({
-      status: 201,
-      success: true,
-      message: 'Event created and broadcasted successfully',
-      data: memEvent
-    });
+    const memEvent = createMemoryEvent(eventData);
+    const publicEvent = { ...memEvent };
+    delete publicEvent.organizerEmail;
+    broadcastSSE('EVENT_CREATED', publicEvent);
+    return res.status(201).json({ success: true, data: memEvent });
   } catch (err) {
-    res.status(500).json({ status: 500, error: err.message });
+    console.error('Event creation failed.');
+    return res.status(500).json({ success: false, message: 'Unable to create event.' });
   }
 };
 
@@ -586,26 +506,24 @@ export const createNewEvent = async (req, res) => {
 export const updateEvent = async (req, res) => {
   try {
     const { id } = req.params;
-
+    const event = isMongoConnected() && mongoose.Types.ObjectId.isValid(id) ? await Event.findById(id).exec() : getMemoryEventById(id);
+    if (!event) return res.status(404).json({ success: false, message: 'Event not found.' });
+    if (!isAuthorizedForEvent(event, req)) return res.status(403).json({ success: false, message: 'You are not allowed to update this event.' });
+    const allowed = ['title', 'tagline', 'category', 'city', 'venue', 'date', 'time', 'price', 'isFree', 'capacity', 'image', 'description', 'agenda', 'tags'];
+    const updates = {};
+    for (const key of allowed) if (req.body?.[key] !== undefined) updates[key] = req.body[key];
+    if (Object.keys(updates).length === 0) return res.status(400).json({ success: false, message: 'No editable event fields were supplied.' });
+    if (updates.title !== undefined && (typeof updates.title !== 'string' || !updates.title.trim() || updates.title.length > 160)) return res.status(400).json({ success: false, message: 'Invalid event title.' });
+    if (updates.capacity !== undefined && (!Number.isInteger(Number(updates.capacity)) || Number(updates.capacity) < (event.registeredCount || 0) || Number(updates.capacity) > 100000)) return res.status(400).json({ success: false, message: 'Capacity must be above current registrations and at most 100000.' });
+    if (updates.description !== undefined && (typeof updates.description !== 'string' || updates.description.length > 5000)) return res.status(400).json({ success: false, message: 'Description is too long.' });
     if (isMongoConnected() && mongoose.Types.ObjectId.isValid(id)) {
-      const updated = await Event.findByIdAndUpdate(id, req.body, { new: true }).exec();
-      if (!updated) {
-        return res.status(404).json({ status: 404, error: 'NotFound', message: 'Event not found in MongoDB' });
-      }
-      return res.status(200).json({
-        status: 200,
-        success: true,
-        database: 'MongoDB Mongoose',
-        message: 'Event updated in MongoDB successfully',
-        data: { ...updated.toObject(), id: updated._id.toString() }
-      });
+      const updated = await Event.findByIdAndUpdate(id, { $set: updates }, { new: true, runValidators: true }).exec();
+      return res.status(200).json({ success: true, data: { ...updated.toObject(), id: updated._id.toString() } });
     }
-
-    const updated = updateMemoryEvent(id, req.body);
-    if (!updated) return res.status(404).json({ status: 404, error: 'Event not found' });
-    res.status(200).json({ status: 200, success: true, data: updated });
+    return res.status(200).json({ success: true, data: updateMemoryEvent(id, updates) });
   } catch (err) {
-    res.status(500).json({ status: 500, error: err.message });
+    console.error('Event update failed.');
+    return res.status(500).json({ success: false, message: 'Unable to update event.' });
   }
 };
 
@@ -613,25 +531,15 @@ export const updateEvent = async (req, res) => {
 export const deleteEvent = async (req, res) => {
   try {
     const { id } = req.params;
-
-    if (isMongoConnected() && mongoose.Types.ObjectId.isValid(id)) {
-      const deleted = await Event.findByIdAndDelete(id).exec();
-      if (!deleted) {
-        return res.status(404).json({ status: 404, error: 'NotFound', message: 'Event not found in MongoDB' });
-      }
-      return res.status(200).json({
-        status: 200,
-        success: true,
-        database: 'MongoDB Mongoose',
-        message: 'Event deleted from MongoDB successfully'
-      });
-    }
-
-    const success = deleteMemoryEvent(id);
-    if (!success) return res.status(404).json({ status: 404, error: 'Event not found' });
-    res.status(200).json({ status: 200, success: true, message: 'Event deleted' });
+    const event = isMongoConnected() && mongoose.Types.ObjectId.isValid(id) ? await Event.findById(id).exec() : getMemoryEventById(id);
+    if (!event) return res.status(404).json({ success: false, message: 'Event not found.' });
+    if (!isAuthorizedForEvent(event, req)) return res.status(403).json({ success: false, message: 'You are not allowed to delete this event.' });
+    if (isMongoConnected() && mongoose.Types.ObjectId.isValid(id)) await Event.findByIdAndDelete(id).exec();
+    else deleteMemoryEvent(id);
+    return res.status(200).json({ success: true, message: 'Event deleted.' });
   } catch (err) {
-    res.status(500).json({ status: 500, error: err.message });
+    console.error('Event deletion failed.');
+    return res.status(500).json({ success: false, message: 'Unable to delete event.' });
   }
 };
 
@@ -643,7 +551,7 @@ export const deleteEvent = async (req, res) => {
 export const reserveSeat = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.body.userId || 'user-1';
+    const userId = req.user.id;
 
     let event = null;
     if (isMongoConnected() && mongoose.Types.ObjectId.isValid(id)) {
@@ -692,7 +600,7 @@ export const reserveSeat = async (req, res) => {
       isRedis: isRedisActive()
     });
   } catch (err) {
-    res.status(500).json({ status: 500, error: err.message });
+    res.status(500).json({ status: 500, error: 'InternalServerError', message: 'An unexpected error occurred.' });
   }
 };
 
@@ -700,7 +608,7 @@ export const reserveSeat = async (req, res) => {
 export const releaseReservation = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.body.userId || 'user-1';
+    const userId = req.user.id;
 
     await releaseSeatLock(id, userId);
 
@@ -717,7 +625,7 @@ export const releaseReservation = async (req, res) => {
       message: 'Reservation hold released.'
     });
   } catch (err) {
-    res.status(500).json({ status: 500, error: err.message });
+    res.status(500).json({ status: 500, error: 'InternalServerError', message: 'An unexpected error occurred.' });
   }
 };
 
@@ -725,7 +633,7 @@ export const releaseReservation = async (req, res) => {
 export const getReservationStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.query.userId || 'user-1';
+    const userId = req.user.id;
 
     const lock = await verifySeatLock(id, userId);
     const heldCount = await getActiveHoldCount(id);
@@ -738,7 +646,7 @@ export const getReservationStatus = async (req, res) => {
       isRedis: isRedisActive()
     });
   } catch (err) {
-    res.status(500).json({ status: 500, error: err.message });
+    res.status(500).json({ status: 500, error: 'InternalServerError', message: 'An unexpected error occurred.' });
   }
 };
 
@@ -750,7 +658,7 @@ export const getReservationStatus = async (req, res) => {
 export const registerForEvent = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.body.userId || 'user-1';
+    const userId = req.user.id;
 
     if (isMongoConnected() && mongoose.Types.ObjectId.isValid(id)) {
       const event = await Event.findById(id).exec();
@@ -758,7 +666,7 @@ export const registerForEvent = async (req, res) => {
         return res.status(404).json({ status: 404, error: 'Event not found in MongoDB' });
       }
 
-      if (event.organizerId && (event.organizerId === userId || event.organizerId === req.body.userEmail)) {
+      if (event.organizerId && (String(event.organizerId) === userId || String(event.organizerId).toLowerCase() === String(req.user.email).toLowerCase())) {
         return res.status(400).json({
           status: 400,
           error: 'IsOrganizer',
@@ -790,8 +698,8 @@ export const registerForEvent = async (req, res) => {
       const reg = await Registration.create({
         eventId: id,
         userId,
-        userName: req.body.userName || 'Guest Attendee',
-        userEmail: req.body.userEmail || 'attendee@example.com',
+        userName: req.user.name,
+        userEmail: req.user.email,
         ticketCode,
         status: 'Confirmed'
       });
@@ -817,13 +725,12 @@ export const registerForEvent = async (req, res) => {
         registeredCount: event.registeredCount,
         capacity: event.capacity,
         remainingSeats: Math.max(0, event.capacity - event.registeredCount),
-        attendeeName: reg.userName
       });
 
+      const { organizerEmail, ...publicEvent } = event.toObject();
       return res.status(201).json({
         status: 201,
         success: true,
-        database: 'MongoDB Mongoose',
         message: 'Registration confirmed with seat reservation released!',
         data: {
           registration: {
@@ -833,7 +740,7 @@ export const registerForEvent = async (req, res) => {
             pdfDownloadUrl: `/api/events/${id}/ticket-pdf/${reg._id.toString()}`
           },
           event: {
-            ...event.toObject(),
+            ...publicEvent,
             id: event._id.toString()
           }
         }
@@ -844,9 +751,10 @@ export const registerForEvent = async (req, res) => {
     const event = getMemoryEventById(id);
     if (!event) return res.status(404).json({ status: 404, error: 'Event not found' });
 
+    if (isAuthorizedForEvent(event, req)) return res.status(400).json({ success: false, message: 'Event organizers cannot register as attendees.' });
     const cityStr = event.city || 'EVT';
     const cityCode = (cityStr.length >= 3 ? cityStr.slice(0, 3) : cityStr).toUpperCase();
-    const result = createMemoryRegistration({ ...req.body, eventId: id, cityCode });
+    const result = createMemoryRegistration({ ...req.body, userId, userName: req.user.name, userEmail: req.user.email, eventId: id, cityCode });
     if (result.error) return res.status(400).json({ status: 400, error: result.error });
 
     incrementMemoryRegistrationCount(id);
@@ -863,7 +771,6 @@ export const registerForEvent = async (req, res) => {
       eventId: id,
       registeredCount: (event.registeredCount || 0) + 1,
       capacity: event.capacity,
-      attendeeName: result.registration.userName
     });
 
     res.status(201).json({
@@ -879,14 +786,15 @@ export const registerForEvent = async (req, res) => {
       }
     });
   } catch (err) {
-    res.status(500).json({ status: 500, error: err.message });
+    res.status(500).json({ status: 500, error: 'InternalServerError', message: 'An unexpected error occurred.' });
   }
 };
 
 // 11. GET /api/events/user/:userId/registrations
 export const getUserRegistrations = async (req, res) => {
   try {
-    const userId = req.params.userId || 'user-1';
+    const userId = req.user.id;
+    if (req.params.userId !== userId) return res.status(403).json({ success: false, message: 'You can only view your own registrations.' });
 
     if (isMongoConnected()) {
       const userRegs = await Registration.find({ userId }).sort({ createdAt: -1 }).exec();
@@ -897,6 +805,7 @@ export const getUserRegistrations = async (req, res) => {
             const doc = await Event.findById(reg.eventId).exec();
             if (doc) {
               const obj = doc.toObject();
+              delete obj.organizerEmail;
               event = {
                 ...obj,
                 id: doc._id.toString(),
@@ -925,7 +834,6 @@ export const getUserRegistrations = async (req, res) => {
       return res.status(200).json({
         status: 200,
         success: true,
-        database: 'MongoDB Mongoose',
         count: detailed.length,
         data: detailed
       });
@@ -952,14 +860,16 @@ export const getUserRegistrations = async (req, res) => {
 
     res.status(200).json({ status: 200, success: true, count: detailedRegs.length, data: detailedRegs });
   } catch (err) {
-    res.status(500).json({ status: 500, error: err.message });
+    res.status(500).json({ status: 500, error: 'InternalServerError', message: 'An unexpected error occurred.' });
   }
 };
 
 // 12. DELETE /api/events/user/:userId/registrations/:regId
 export const cancelUserRegistration = async (req, res) => {
   try {
-    const { regId, userId } = req.params;
+    const { regId } = req.params;
+    const userId = req.user.id;
+    if (req.params.userId !== userId) return res.status(403).json({ success: false, message: 'You can only cancel your own registration.' });
 
     if (isMongoConnected() && mongoose.Types.ObjectId.isValid(regId)) {
       const deleted = await Registration.findOneAndDelete({ _id: regId, userId }).exec();
@@ -976,7 +886,6 @@ export const cancelUserRegistration = async (req, res) => {
       return res.status(200).json({
         status: 200,
         success: true,
-        database: 'MongoDB Mongoose',
         message: 'Registration deleted from MongoDB'
       });
     }
@@ -989,7 +898,7 @@ export const cancelUserRegistration = async (req, res) => {
 
     res.status(200).json({ status: 200, success: true, message: 'Registration cancelled' });
   } catch (err) {
-    res.status(500).json({ status: 500, error: err.message });
+    res.status(500).json({ status: 500, error: 'InternalServerError', message: 'An unexpected error occurred.' });
   }
 };
 
@@ -1010,7 +919,7 @@ export const downloadTicketPDF = async (req, res) => {
         event = await Event.findById(id).lean();
       }
       if (mongoose.Types.ObjectId.isValid(regId)) {
-        registration = await Registration.findById(regId).lean();
+        registration = await Registration.findOne({ _id: regId, eventId: id }).lean();
       }
     }
 
@@ -1020,13 +929,15 @@ export const downloadTicketPDF = async (req, res) => {
       registration = userRegs.find(r => r.id === regId || r._id === regId);
     }
 
-    if (!event || !registration) {
+    if (!event || !registration || String(registration.eventId) !== String(id)) {
       return res.status(404).json({ status: 404, error: 'Event or Registration not found for ticket generation' });
     }
+    const isOwner = String(registration.userId) === String(req.user.id) || String(registration.userEmail || '').toLowerCase() === String(req.user.email || '').toLowerCase();
+    if (!isOwner && !isAuthorizedForEvent(event, req)) return res.status(403).json({ success: false, message: 'You do not have access to this ticket.' });
 
     await streamTicketPDF(event, registration, res);
   } catch (err) {
-    console.error('PDF Generation Error:', err);
+    console.error('PDF generation failed.');
     if (!res.headersSent) {
       res.status(500).json({ status: 500, error: 'Failed to generate ticket PDF' });
     }
@@ -1046,6 +957,10 @@ export const checkInAttendee = async (req, res) => {
       return res.status(400).json({ status: 400, error: 'Ticket code is required' });
     }
 
+    if (typeof ticketCode !== 'string' || ticketCode.length > 80 || !eventId) return res.status(400).json({ success: false, message: 'Ticket code and event are required.' });
+    const event = isMongoConnected() && mongoose.Types.ObjectId.isValid(eventId) ? await Event.findById(eventId).exec() : getMemoryEventById(eventId);
+    if (!event) return res.status(404).json({ success: false, message: 'Event not found.' });
+    if (!isAuthorizedForEvent(event, req)) return res.status(403).json({ success: false, message: 'Only this event host or an administrator can check in attendees.' });
     const cleanCode = ticketCode.trim();
 
     if (isMongoConnected()) {
@@ -1066,7 +981,7 @@ export const checkInAttendee = async (req, res) => {
           status: 409,
           alreadyCheckedIn: true,
           message: `Ticket already checked in at ${new Date(reg.checkedInAt).toLocaleTimeString()}`,
-          attendee: reg
+          attendee: { userName: reg.userName, ticketCode: reg.ticketCode, status: reg.status, checkedInAt: reg.checkedInAt }
         });
       }
 
@@ -1075,8 +990,6 @@ export const checkInAttendee = async (req, res) => {
       await reg.save();
 
       broadcastSSE('ATTENDEE_CHECKED_IN', {
-        ticketCode: reg.ticketCode,
-        attendeeName: reg.userName,
         eventId: reg.eventId
       });
 
@@ -1084,7 +997,7 @@ export const checkInAttendee = async (req, res) => {
         status: 200,
         success: true,
         message: 'Attendee successfully checked in! Access Granted.',
-        attendee: reg
+        attendee: { userName: reg.userName, ticketCode: reg.ticketCode, status: reg.status, checkedInAt: reg.checkedInAt }
       });
     }
 
@@ -1098,8 +1011,6 @@ export const checkInAttendee = async (req, res) => {
     }
 
     broadcastSSE('ATTENDEE_CHECKED_IN', {
-      ticketCode: result.registration.ticketCode,
-      attendeeName: result.registration.userName,
       eventId: result.registration.eventId
     });
 
@@ -1107,10 +1018,10 @@ export const checkInAttendee = async (req, res) => {
       status: 200,
       success: true,
       message: 'Attendee successfully checked in! Access Granted.',
-      attendee: result.registration
+      attendee: { userName: result.registration.userName, ticketCode: result.registration.ticketCode, status: result.registration.status, checkedInAt: result.registration.checkedInAt }
     });
   } catch (err) {
-    res.status(500).json({ status: 500, error: err.message });
+    res.status(500).json({ status: 500, error: 'InternalServerError', message: 'An unexpected error occurred.' });
   }
 };
 
