@@ -46,16 +46,7 @@ export default function Login({ onLogin }) {
       if (onLogin) onLogin(data.data);
       navigate(redirectTarget, { replace: true });
     } catch (err) {
-      // Demo fallback if backend server is unreachable
-      const fallbackUser = {
-        id: `user-${Date.now()}`,
-        name: email.split('@')[0] || 'Logged In User',
-        email: email.trim(),
-        city: 'San Francisco',
-        role: 'Event Host & Attendee'
-      };
-      if (onLogin) onLogin(fallbackUser);
-      navigate(redirectTarget, { replace: true });
+      setErrorMsg('Unable to reach the City Pulse server. Please try again when the service is available.');
     } finally {
       setIsSubmitting(false);
     }
