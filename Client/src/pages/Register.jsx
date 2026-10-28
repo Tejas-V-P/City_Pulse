@@ -57,23 +57,12 @@ export default function Register() {
         return;
       }
 
-      // Save registered user into temporary state & localStorage
+      // Keep only non-sensitive profile details in browser storage.
       localStorage.setItem('tempUser', JSON.stringify(data.data));
       localStorage.setItem('currentUser', JSON.stringify(data.data));
       navigate('/create-profile', { state: { ...data.data, from: location.state?.from } });
     } catch (err) {
-      // Local fallback if server offline
-      const fallbackUser = {
-        id: `usr-${Date.now()}`,
-        name: formData.name,
-        email: formData.email,
-        password: formData.password,
-        city: 'San Francisco',
-        role: 'Event Host & Attendee'
-      };
-      localStorage.setItem('tempUser', JSON.stringify(fallbackUser));
-      localStorage.setItem('currentUser', JSON.stringify(fallbackUser));
-      navigate('/create-profile', { state: { ...fallbackUser, from: location.state?.from } });
+      setErrorMsg('Unable to reach the City Pulse server. Your account was not created. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
