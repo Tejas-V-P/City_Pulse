@@ -72,7 +72,19 @@ try {
 }
 
 // Global Middleware
-app.use(cors());
+const allowedOrigins = (process.env.CLIENT_URL || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+if (process.env.NODE_ENV !== 'production') {
+  allowedOrigins.push('http://localhost:5173');
+}
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error('Origin is not allowed by CORS'));
+  }
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
@@ -83,6 +95,11 @@ app.use('/api/events', validateEventInput, eventRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/tags', tagRoutes);
 app.use('/api/sql', sqlJoinRoutes);
+
+// Health endpoint used by Render. Keep it lightweight for deployment probes.
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', mongoConnected: isMongoConnected });
+});
 
 // Root Health Check Route
 app.get('/', (req, res) => {
