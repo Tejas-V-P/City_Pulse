@@ -43,7 +43,10 @@ export default function Login({ onLogin }) {
         return;
       }
 
-      if (onLogin) onLogin(data.data);
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+      }
+      if (onLogin) onLogin(data.data, data.token);
       navigate(redirectTarget, { replace: true });
     } catch (err) {
       // Demo fallback if backend server is unreachable

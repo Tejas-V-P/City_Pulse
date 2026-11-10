@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Aurora from '../components/Aurora';
 import TextType from '../components/TextType';
-import { API_BASE_URL } from '../config/api';
+import { API_BASE_URL, getAuthHeaders } from '../config/api';
 
 export default function CreateProfile({ onLogin }) {
   const locationState = useLocation().state || {};
@@ -55,7 +55,7 @@ export default function CreateProfile({ onLogin }) {
       try {
         await fetch(`${API_BASE_URL}/api/auth/profile/${encodeURIComponent(userData.id)}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders(),
           body: JSON.stringify({
             name: userData.name,
             city: userData.city,

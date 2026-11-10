@@ -1,5 +1,31 @@
 [
   {
+    "id": "6af3351d7fef9047c1039d7a",
+    "title": "Authorized Security Summit",
+    "tagline": "",
+    "category": "Technology",
+    "city": "San Francisco",
+    "venue": "Moscone",
+    "date": "2026-12-05",
+    "time": "10:00 AM - 04:00 PM",
+    "price": 0,
+    "isFree": false,
+    "capacity": 100,
+    "registeredCount": 0,
+    "image": "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1000&q=80",
+    "description": "No description provided.",
+    "agenda": [],
+    "organizerName": "Alice Security",
+    "organizerId": "6af3351d7fef9047c1039d79",
+    "organizerEmail": "sec_test_1794323740802@example.com",
+    "tags": [],
+    "coordinates": {
+      "lat": 37.7749,
+      "lng": -122.4194
+    },
+    "createdAt": "2026-11-10T15:15:41.428Z"
+  },
+  {
     "id": "6ad8f9b09878d519c5ebaa2d",
     "title": "Global Multi-User Community Tech Fest 6",
     "tagline": "",

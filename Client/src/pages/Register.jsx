@@ -58,16 +58,18 @@ export default function Register() {
       }
 
       // Save registered user into temporary state & localStorage
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+      }
       localStorage.setItem('tempUser', JSON.stringify(data.data));
       localStorage.setItem('currentUser', JSON.stringify(data.data));
       navigate('/create-profile', { state: { ...data.data, from: location.state?.from } });
     } catch (err) {
-      // Local fallback if server offline
+      // Local fallback if server offline (never persist plaintext password in localStorage)
       const fallbackUser = {
         id: `usr-${Date.now()}`,
-        name: formData.name,
-        email: formData.email,
-        password: formData.password,
+        name: formData.name.trim(),
+        email: formData.email.trim().toLowerCase(),
         city: 'San Francisco',
         role: 'Event Host & Attendee'
       };

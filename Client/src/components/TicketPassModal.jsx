@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { getGoogleCalendarUrl, downloadIcsFile } from '../utils/calendarExport';
+import { API_BASE_URL } from '../config/api';
 import './TicketPassModal.css';
 
 export default function TicketPassModal({ registration, event, onClose }) {
@@ -18,8 +19,8 @@ export default function TicketPassModal({ registration, event, onClose }) {
   const eventId = event.id || event._id;
   const regId = registration.id || registration._id;
   const pdfUrl = registration.pdfDownloadUrl
-    ? `http://localhost:5000${registration.pdfDownloadUrl}`
-    : `http://localhost:5000/api/events/${eventId}/ticket-pdf/${regId}`;
+    ? (registration.pdfDownloadUrl.startsWith('http') ? registration.pdfDownloadUrl : `${API_BASE_URL}${registration.pdfDownloadUrl}`)
+    : `${API_BASE_URL}/api/events/${eventId}/ticket-pdf/${regId}`;
 
   const handleDownloadPDF = () => {
     window.open(pdfUrl, '_blank');

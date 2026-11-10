@@ -443,6 +443,7 @@ export default function EventExplorer({ currentUser, isLoggedIn }) {
                   key={evt.id || evt._id}
                   event={evt}
                   onOpenModal={setActiveEventModal}
+                  onViewDetails={setActiveEventModal}
                   onTagClick={handleToggleTag}
                 />
               ))}
@@ -459,6 +460,7 @@ export default function EventExplorer({ currentUser, isLoggedIn }) {
                   key={evt.id || evt._id}
                   event={evt}
                   onOpenModal={setActiveEventModal}
+                  onViewDetails={setActiveEventModal}
                   onTagClick={handleToggleTag}
                 />
               ))

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import confetti from 'canvas-confetti';
+import { API_BASE_URL, getAuthHeaders } from '../config/api';
 import './CheckInScannerModal.css';
 
 export default function CheckInScannerModal({ isOpen, onClose, activeEventId }) {
@@ -83,9 +84,9 @@ export default function CheckInScannerModal({ isOpen, onClose, activeEventId }) 
     setFeedback(null);
 
     try {
-      const res = await fetch('http://localhost:5000/api/events/check-in', {
+      const res = await fetch(`${API_BASE_URL}/api/events/check-in`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ ticketCode: code, eventId: activeEventId })
       });
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../config/api';
+import { API_BASE_URL, getAuthHeaders } from '../config/api';
 import './AttendeeRosterModal.css';
 
 export default function AttendeeRosterModal({ event, onClose, onDeleteEvent, currentUser }) {
@@ -22,13 +22,7 @@ export default function AttendeeRosterModal({ event, onClose, onDeleteEvent, cur
 
   const eventId = event?.id || event?._id;
 
-  const authHeaders = {
-    'Content-Type': 'application/json',
-    'x-user-id': activeUser?.id || activeUser?._id || '',
-    'x-user-email': activeUser?.email || '',
-    'x-user-role': activeUser?.role || 'Attendee',
-    'x-user-name': activeUser?.name || ''
-  };
+  const authHeaders = getAuthHeaders();
 
   const showToast = (msg) => {
     setToastMessage(msg);

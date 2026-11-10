@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import confetti from 'canvas-confetti';
-import { API_BASE_URL } from '../config/api';
+import { API_BASE_URL, getAuthHeaders } from '../config/api';
 import { isUserRegistered, saveStoredRegistration } from '../utils/storage';
 import { getGoogleCalendarUrl, downloadIcsFile } from '../utils/calendarExport';
 import './EventModal.css';
@@ -66,7 +66,9 @@ export default function EventModal({ event, onClose, onRegisterSuccess, currentU
     // Check backend registrations
     const verifyRegistration = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/events/user/${encodeURIComponent(activeUserId)}/registrations`);
+        const res = await fetch(`${API_BASE_URL}/api/events/user/${encodeURIComponent(activeUserId)}/registrations`, {
+          headers: getAuthHeaders()
+        });
         const data = await res.json();
         if (res.ok && data.success && Array.isArray(data.data)) {
           const match = data.data.find(r =>
@@ -116,7 +118,7 @@ export default function EventModal({ event, onClose, onRegisterSuccess, currentU
     try {
       const res = await fetch(`${API_BASE_URL}/api/events/${eventId}/reserve`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ userId: activeUserId })
       });
       const data = await res.json();
@@ -139,7 +141,7 @@ export default function EventModal({ event, onClose, onRegisterSuccess, currentU
     if (holdActive && !isAlreadyRegistered) {
       fetch(`${API_BASE_URL}/api/events/${eventId}/release-reservation`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ userId: activeUserId })
       }).catch(() => {});
     }
@@ -171,7 +173,7 @@ export default function EventModal({ event, onClose, onRegisterSuccess, currentU
     try {
       const res = await fetch(`${API_BASE_URL}/api/events/${eventId}/register`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           userId: activeUserId,
           userName: name.trim(),

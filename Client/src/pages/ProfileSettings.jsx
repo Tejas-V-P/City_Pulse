@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Aurora from '../components/Aurora';
 import TextType from '../components/TextType';
-import { API_BASE_URL } from '../config/api';
+import { API_BASE_URL, getAuthHeaders } from '../config/api';
 
 export default function ProfileSettings({ currentUser, onLogin, onLogout }) {
   const activeUser = currentUser || (() => {
@@ -65,13 +65,16 @@ export default function ProfileSettings({ currentUser, onLogin, onLogout }) {
     try {
       const res = await fetch(`${API_BASE_URL}/api/auth/profile/${encodeURIComponent(userId)}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(payload)
       });
 
       const data = await res.json();
       if (res.ok && data.success) {
-        if (onLogin) onLogin(data.data);
+        if (data.token) {
+          localStorage.setItem('token', data.token);
+        }
+        if (onLogin) onLogin(data.data, data.token);
         setSuccessMsg('Profile updated successfully in database!');
       } else {
         const fallbackData = { ...activeUser, ...payload };

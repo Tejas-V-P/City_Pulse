@@ -30,6 +30,7 @@ import {
 
 import { streamTicketPDF, generateQRCodeDataUrl } from '../utils/ticketGenerator.js';
 import { addSSEClient, broadcastSSE } from '../utils/sseBroadcaster.js';
+import { escapeRegex, sanitizeString } from '../utils/sanitizer.js';
 
 // Helper: Check if Mongoose is connected to MongoDB
 const isMongoConnected = () => mongoose.connection.readyState === 1;
@@ -63,33 +64,35 @@ export const getAllEvents = async (req, res) => {
       let query = {};
 
       if (city && city !== 'All Cities') {
-        query.city = { $regex: new RegExp(`^${city}$`, 'i') };
+        const safeCity = escapeRegex(String(city).trim());
+        query.city = { $regex: new RegExp(`^${safeCity}$`, 'i') };
       }
 
       if (category && category !== 'All') {
-        query.category = { $regex: new RegExp(`^${category}$`, 'i') };
+        const safeCategory = escapeRegex(String(category).trim());
+        query.category = { $regex: new RegExp(`^${safeCategory}$`, 'i') };
       }
 
       if (tags) {
-        const tagList = Array.isArray(tags) ? tags : tags.split(',');
-        query.tags = { $in: tagList };
+        const tagList = Array.isArray(tags) ? tags : String(tags).split(',');
+        query.tags = { $in: tagList.map(t => String(t).trim()) };
       }
 
       const andClauses = [];
 
       if (organizerId) {
-        const orgTarget = String(organizerId).trim();
+        const safeOrg = escapeRegex(String(organizerId).trim());
         andClauses.push({
           $or: [
-            { organizerId: orgTarget },
-            { organizerEmail: orgTarget.toLowerCase() },
-            { organizerName: new RegExp(`^${orgTarget}$`, 'i') }
+            { organizerId: safeOrg },
+            { organizerEmail: safeOrg.toLowerCase() },
+            { organizerName: new RegExp(`^${safeOrg}$`, 'i') }
           ]
         });
       }
 
       if (search) {
-        const q = search.trim();
+        const q = escapeRegex(String(search).trim());
         andClauses.push({
           $or: [
             { title: { $regex: q, $options: 'i' } },
@@ -214,57 +217,30 @@ export const getEventDetails = async (req, res) => {
   }
 };
 
-// Helper: Verify if requester is authorized as Event Host or Admin
+// Helper: Verify if requester is authorized as Event Host or Admin (Strict JWT verification)
 export const isAuthorizedForEvent = (event, req) => {
-  if (!event) return false;
+  if (!event || !req.user) return false;
 
-  const requesterId = String(
-    req.headers['x-user-id'] || 
-    req.query.userId || 
-    req.body.userId || 
-    req.user?.id || 
-    req.user?._id || 
-    ''
-  ).trim();
+  // 1. Authenticated Admin role check (from verified JWT payload only)
+  const verifiedRole = String(req.user.role || '').toLowerCase().trim();
+  if (verifiedRole === 'admin') return true;
 
-  const requesterEmail = String(
-    req.headers['x-user-email'] || 
-    req.query.userEmail || 
-    req.body.userEmail || 
-    req.user?.email || 
-    ''
-  ).toLowerCase().trim();
+  // 2. Identify requester strictly from verified JWT token
+  const requesterId = String(req.user.id || req.user._id || '').trim();
+  const requesterEmail = String(req.user.email || '').toLowerCase().trim();
+  const requesterName = String(req.user.name || '').toLowerCase().trim();
 
-  const requesterRole = String(
-    req.headers['x-user-role'] || 
-    req.query.role || 
-    req.body.role || 
-    req.user?.role || 
-    ''
-  ).toLowerCase().trim();
-
-  const requesterName = String(
-    req.headers['x-user-name'] || 
-    req.query.userName || 
-    req.body.userName || 
-    req.user?.name || 
-    ''
-  ).toLowerCase().trim();
-
-  // 1. Admin always has full management permissions
-  if (requesterRole === 'admin') return true;
-
-  // 2. Event Organizer permissions
+  // 3. Compare with Event Organizer properties
   const eventOrganizerId = String(event.organizerId || '').trim();
   const eventOrganizerName = String(event.organizerName || '').toLowerCase().trim();
   const eventOrganizerEmail = String(event.organizerEmail || '').toLowerCase().trim();
 
   // Match by User ID
   if (requesterId && eventOrganizerId && requesterId === eventOrganizerId) return true;
-  // Match by Email (either stored in organizerEmail or organizerId)
+  // Match by Email
   if (requesterEmail && eventOrganizerId && requesterEmail === eventOrganizerId.toLowerCase()) return true;
   if (requesterEmail && eventOrganizerEmail && requesterEmail === eventOrganizerEmail) return true;
-  // Match by Name
+  // Match by verified Name
   if (requesterName && eventOrganizerName && requesterName === eventOrganizerName) return true;
 
   return false;
@@ -427,8 +403,8 @@ export const removeEventAttendee = async (req, res) => {
     }
 
     const isHost = isAuthorizedForEvent(event, req);
-    const requesterId = String(req.headers['x-user-id'] || req.query.userId || req.body.userId || '').trim();
-    const requesterEmail = String(req.headers['x-user-email'] || req.query.userEmail || req.body.userEmail || '').toLowerCase().trim();
+    const requesterId = String(req.user?.id || '').trim();
+    const requesterEmail = String(req.user?.email || '').toLowerCase().trim();
 
     if (isMongoConnected()) {
       let reg = null;
@@ -519,18 +495,33 @@ export const createNewEvent = async (req, res) => {
       });
     }
 
-    const coords = req.body.coordinates || getCityCoordinates(city);
+    // Securely bind organizer attributes from authenticated session (verified JWT)
+    const finalOrganizerId = String(req.user?.id || 'usr-1').trim();
+    const finalOrganizerName = String(req.user?.name || 'Event Host').trim();
+    const finalOrganizerEmail = String(req.user?.email || '').trim().toLowerCase();
+
+    const cleanTitle = sanitizeString(title).trim();
+    const cleanCategory = sanitizeString(category).trim();
+    const cleanCity = sanitizeString(city).trim();
+    const cleanVenue = sanitizeString(venue).trim();
+    const cleanTagline = sanitizeString(req.body.tagline || '').trim();
+    const cleanDescription = sanitizeString(req.body.description || '').trim();
+
+    const coords = req.body.coordinates || getCityCoordinates(cleanCity);
 
     if (isMongoConnected()) {
       const created = await Event.create({
         ...req.body,
-        city: city.trim(),
-        category: category.trim(),
-        venue: venue.trim(),
+        title: cleanTitle,
+        category: cleanCategory,
+        city: cleanCity,
+        venue: cleanVenue,
+        tagline: cleanTagline,
+        description: cleanDescription,
         coordinates: coords,
-        organizerName: organizerName.trim(),
-        organizerId: organizerId.trim(),
-        organizerEmail: organizerEmail.trim().toLowerCase()
+        organizerName: finalOrganizerName,
+        organizerId: finalOrganizerId,
+        organizerEmail: finalOrganizerEmail
       });
 
       const formatted = {
@@ -542,10 +533,16 @@ export const createNewEvent = async (req, res) => {
       createMemoryEvent({
         ...req.body,
         id: created._id.toString(),
+        title: cleanTitle,
+        category: cleanCategory,
+        city: cleanCity,
+        venue: cleanVenue,
+        tagline: cleanTagline,
+        description: cleanDescription,
         coordinates: coords,
-        organizerName: organizerName.trim(),
-        organizerId: organizerId.trim(),
-        organizerEmail: organizerEmail.trim().toLowerCase()
+        organizerName: finalOrganizerName,
+        organizerId: finalOrganizerId,
+        organizerEmail: finalOrganizerEmail
       });
 
       // Broadcast new event immediately to all active connected browsers
@@ -587,11 +584,35 @@ export const updateEvent = async (req, res) => {
   try {
     const { id } = req.params;
 
+    let targetEvent = null;
+    if (isMongoConnected() && mongoose.Types.ObjectId.isValid(id)) {
+      targetEvent = await Event.findById(id).exec();
+    } else {
+      targetEvent = getMemoryEventById(id);
+    }
+
+    if (!targetEvent) {
+      return res.status(404).json({ status: 404, error: 'NotFound', message: 'Event not found' });
+    }
+
+    // Role-based Access Control: Verify requester is the Event Organizer or Admin
+    if (!isAuthorizedForEvent(targetEvent, req)) {
+      return res.status(403).json({
+        status: 403,
+        error: 'Forbidden',
+        message: 'Access Denied: Only the event organizer or an administrator has permission to modify this event.'
+      });
+    }
+
+    // Prevent non-admin users from hijacking organizer attributes
+    const isUserAdmin = req.user && req.user.role?.toLowerCase() === 'admin';
+    if (!isUserAdmin) {
+      delete req.body.organizerId;
+      delete req.body.organizerEmail;
+    }
+
     if (isMongoConnected() && mongoose.Types.ObjectId.isValid(id)) {
       const updated = await Event.findByIdAndUpdate(id, req.body, { new: true }).exec();
-      if (!updated) {
-        return res.status(404).json({ status: 404, error: 'NotFound', message: 'Event not found in MongoDB' });
-      }
       return res.status(200).json({
         status: 200,
         success: true,
@@ -614,11 +635,28 @@ export const deleteEvent = async (req, res) => {
   try {
     const { id } = req.params;
 
+    let targetEvent = null;
+    if (isMongoConnected() && mongoose.Types.ObjectId.isValid(id)) {
+      targetEvent = await Event.findById(id).exec();
+    } else {
+      targetEvent = getMemoryEventById(id);
+    }
+
+    if (!targetEvent) {
+      return res.status(404).json({ status: 404, error: 'NotFound', message: 'Event not found' });
+    }
+
+    // Role-based Access Control: Verify requester is the Event Organizer or Admin
+    if (!isAuthorizedForEvent(targetEvent, req)) {
+      return res.status(403).json({
+        status: 403,
+        error: 'Forbidden',
+        message: 'Access Denied: Only the event organizer or an administrator has permission to delete this event.'
+      });
+    }
+
     if (isMongoConnected() && mongoose.Types.ObjectId.isValid(id)) {
       const deleted = await Event.findByIdAndDelete(id).exec();
-      if (!deleted) {
-        return res.status(404).json({ status: 404, error: 'NotFound', message: 'Event not found in MongoDB' });
-      }
       return res.status(200).json({
         status: 200,
         success: true,
@@ -750,7 +788,9 @@ export const getReservationStatus = async (req, res) => {
 export const registerForEvent = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.body.userId || 'user-1';
+    const finalUserId = String(req.user?.id || req.body.userId || `user-${Date.now()}`).trim();
+    const finalUserName = sanitizeString(req.user?.name || req.body.userName || 'Guest Attendee').trim();
+    const finalUserEmail = String(req.user?.email || req.body.userEmail || 'attendee@example.com').trim().toLowerCase();
 
     if (isMongoConnected() && mongoose.Types.ObjectId.isValid(id)) {
       const event = await Event.findById(id).exec();
@@ -758,7 +798,7 @@ export const registerForEvent = async (req, res) => {
         return res.status(404).json({ status: 404, error: 'Event not found in MongoDB' });
       }
 
-      if (event.organizerId && (event.organizerId === userId || event.organizerId === req.body.userEmail)) {
+      if (event.organizerId && (event.organizerId === finalUserId || event.organizerId === finalUserEmail)) {
         return res.status(400).json({
           status: 400,
           error: 'IsOrganizer',
@@ -766,7 +806,7 @@ export const registerForEvent = async (req, res) => {
         });
       }
 
-      const existing = await Registration.findOne({ eventId: id, userId }).exec();
+      const existing = await Registration.findOne({ eventId: id, userId: finalUserId }).exec();
       if (existing) {
         return res.status(400).json({
           status: 400,
@@ -776,7 +816,7 @@ export const registerForEvent = async (req, res) => {
       }
 
       // Check lock or capacity
-      const lock = await verifySeatLock(id, userId);
+      const lock = await verifySeatLock(id, finalUserId);
       if (!lock.held && event.registeredCount >= event.capacity) {
         return res.status(400).json({ status: 400, error: 'Event is fully booked!' });
       }
@@ -789,9 +829,9 @@ export const registerForEvent = async (req, res) => {
       // Create Registration
       const reg = await Registration.create({
         eventId: id,
-        userId,
-        userName: req.body.userName || 'Guest Attendee',
-        userEmail: req.body.userEmail || 'attendee@example.com',
+        userId: finalUserId,
+        userName: finalUserName,
+        userEmail: finalUserEmail,
         ticketCode,
         status: 'Confirmed'
       });
@@ -801,7 +841,7 @@ export const registerForEvent = async (req, res) => {
       event.registeredCount = (event.registeredCount || 0) + 1;
 
       // Release seat hold lock
-      await releaseSeatLock(id, userId);
+      await releaseSeatLock(id, finalUserId);
 
       // Generate scannable QR Code Data URL
       const qrDataUrl = await generateQRCodeDataUrl({
@@ -846,11 +886,18 @@ export const registerForEvent = async (req, res) => {
 
     const cityStr = event.city || 'EVT';
     const cityCode = (cityStr.length >= 3 ? cityStr.slice(0, 3) : cityStr).toUpperCase();
-    const result = createMemoryRegistration({ ...req.body, eventId: id, cityCode });
+    const result = createMemoryRegistration({
+      ...req.body,
+      userId: finalUserId,
+      userName: finalUserName,
+      userEmail: finalUserEmail,
+      eventId: id,
+      cityCode
+    });
     if (result.error) return res.status(400).json({ status: 400, error: result.error });
 
     incrementMemoryRegistrationCount(id);
-    await releaseSeatLock(id, userId);
+    await releaseSeatLock(id, finalUserId);
 
     const qrDataUrl = await generateQRCodeDataUrl({
       ticketCode: result.registration.ticketCode,
@@ -1059,6 +1106,24 @@ export const checkInAttendee = async (req, res) => {
           error: 'NotFound',
           message: 'Invalid ticket code or attendee not found for this event.'
         });
+      }
+
+      // Authorization Check: Caller must be the host of this event or an admin
+      const targetEventId = reg.eventId || eventId;
+      if (targetEventId) {
+        let event = null;
+        if (mongoose.Types.ObjectId.isValid(targetEventId)) {
+          event = await Event.findById(targetEventId).exec();
+        } else {
+          event = getMemoryEventById(targetEventId);
+        }
+        if (event && !isAuthorizedForEvent(event, req)) {
+          return res.status(403).json({
+            status: 403,
+            error: 'Forbidden',
+            message: 'Access Denied: Only the event organizer or an administrator can check in attendees.'
+          });
+        }
       }
 
       if (reg.status === 'Checked-In') {

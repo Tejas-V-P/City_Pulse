@@ -22,7 +22,7 @@ function App() {
     }
   });
 
-  const handleLogin = (userData) => {
+  const handleLogin = (userData, token) => {
     const baseObj = userData || {
       name: 'Logged In User',
       email: 'user@example.com',
@@ -38,6 +38,10 @@ function App() {
     setCurrentUser(userObj);
     localStorage.setItem('isLoggedIn', 'true');
     localStorage.setItem('currentUser', JSON.stringify(userObj));
+    const finalToken = token || baseObj.token;
+    if (finalToken) {
+      localStorage.setItem('token', finalToken);
+    }
   };
 
   const handleLogout = () => {
@@ -45,6 +49,7 @@ function App() {
     setCurrentUser(null);
     localStorage.removeItem('isLoggedIn');
     localStorage.removeItem('currentUser');
+    localStorage.removeItem('token');
   };
 
   return (

@@ -6,15 +6,32 @@ server/node_modules/
 # Environment variables & secrets
 .env
 .env.*
+.env.local
+.env.*.local
 !.env.example
 server/.env
 server/.env.*
+server/.env.local
+!server/.env.example
+Client/.env
+Client/.env.*
+Client/.env.local
+!Client/.env.example
+
+# Secret keys, certificates, & credentials
+*.pem
+*.key
+*.cert
+*.crt
+*.pfx
+*.p12
 
 # Logs & Debug
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 
 # Build & Output
 dist/
@@ -22,6 +39,13 @@ dist-ssr/
 build/
 Client/dist/
 
-# IDE & System
+# IDE, OS & System
 .DS_Store
 Thumbs.db
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
