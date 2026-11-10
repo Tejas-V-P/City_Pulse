@@ -62,6 +62,7 @@ async function runTests() {
   console.log('   ✅ Check-In verification and duplicate protection verified!');
 
   console.log('\n🎉 ALL 4 CORE ARCHITECTURAL TESTS PASSED CLEANLY!\n');
+  process.exit(0);
 }
 
 runTests().catch(err => {

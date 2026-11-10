@@ -1,5 +1,16 @@
 [
   {
+    "id": "reg-1794323354957",
+    "eventId": "test-evt-1794323354920",
+    "userId": "test-user-bob-1794323354920",
+    "userName": "Bob Tester",
+    "userEmail": "bob@example.com",
+    "ticketCode": "TKT-SF-78742",
+    "registeredAt": "2026-11-10T15:09:14.957Z",
+    "status": "Checked-In",
+    "checkedInAt": "2026-11-10T15:09:14.958Z"
+  },
+  {
     "id": "reg-1792605046248",
     "eventId": "test-evt-1792605046218",
     "userId": "test-user-bob-1792605046218",

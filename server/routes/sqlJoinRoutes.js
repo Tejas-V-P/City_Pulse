@@ -6,6 +6,7 @@ import {
   getUsersWithRegistrationsSQL,
   getFullUserEventAuditSQL
 } from '../db/postgresJoinService.js';
+import { requireAuth, requireAdmin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -22,7 +23,10 @@ const checkPostgresActive = (req, res, next) => {
   next();
 };
 
-// 1. INNER JOIN Endpoint
+// All SQL Analytics and Audit endpoints require Administrator privileges
+router.use(requireAuth, requireAdmin);
+
+// 1. INNER JOIN Endpoint (Admin Audit)
 router.get('/inner-join', checkPostgresActive, async (req, res, next) => {
   try {
     const data = await getRegistrationsWithDetailsSQL();
@@ -38,7 +42,7 @@ router.get('/inner-join', checkPostgresActive, async (req, res, next) => {
   }
 });
 
-// 2. LEFT JOIN Endpoint
+// 2. LEFT JOIN Endpoint (Admin Audit)
 router.get('/left-join', checkPostgresActive, async (req, res, next) => {
   try {
     const data = await getEventsWithOrganizersAndCapacitySQL();
@@ -54,7 +58,7 @@ router.get('/left-join', checkPostgresActive, async (req, res, next) => {
   }
 });
 
-// 3. RIGHT JOIN Endpoint
+// 3. RIGHT JOIN Endpoint (Admin Audit)
 router.get('/right-join', checkPostgresActive, async (req, res, next) => {
   try {
     const data = await getUsersWithRegistrationsSQL();
@@ -69,7 +73,7 @@ router.get('/right-join', checkPostgresActive, async (req, res, next) => {
   }
 });
 
-// 4. FULL OUTER JOIN Endpoint
+// 4. FULL OUTER JOIN Endpoint (Admin Audit)
 router.get('/full-outer-join', checkPostgresActive, async (req, res, next) => {
   try {
     const data = await getFullUserEventAuditSQL();

@@ -1,8 +1,9 @@
 import React from 'react';
 import './EventCard.css';
 
-export default function EventCard({ event, onViewDetails, onRegister }) {
+export default function EventCard({ event, onViewDetails, onOpenModal, onRegister, onTagClick }) {
   const spotsLeft = event.capacity - event.registeredCount;
+  const handleView = onViewDetails || onOpenModal;
 
   // Format date readable
   const formatDate = (dateStr) => {
@@ -41,7 +42,19 @@ export default function EventCard({ event, onViewDetails, onRegister }) {
         {event.tags && event.tags.length > 0 && (
           <div className="event-card-tags">
             {event.tags.slice(0, 3).map(tag => (
-              <span key={tag} className="card-tag-pill">{tag}</span>
+              <span
+                key={tag}
+                className="card-tag-pill"
+                onClick={(e) => {
+                  if (onTagClick) {
+                    e.stopPropagation();
+                    onTagClick(tag);
+                  }
+                }}
+                style={onTagClick ? { cursor: 'pointer' } : undefined}
+              >
+                {tag}
+              </span>
             ))}
             {event.tags.length > 3 && (
               <span className="card-tag-more">+{event.tags.length - 3}</span>
@@ -66,7 +79,7 @@ export default function EventCard({ event, onViewDetails, onRegister }) {
             <span className="spots-badge">{spotsLeft > 0 ? `${spotsLeft} seats left` : 'Fully Booked'}</span>
           </div>
 
-          <button className="btn-view-event" onClick={() => onViewDetails(event)}>
+          <button className="btn-view-event" onClick={() => handleView?.(event)}>
             View Details
           </button>
         </div>

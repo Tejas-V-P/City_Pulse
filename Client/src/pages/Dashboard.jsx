@@ -3,7 +3,7 @@ import TicketPassModal from '../components/TicketPassModal';
 import CreateEventModal from '../components/CreateEventModal';
 import AttendeeRosterModal from '../components/AttendeeRosterModal';
 import CheckInScannerModal from '../components/CheckInScannerModal';
-import { API_BASE_URL } from '../config/api';
+import { API_BASE_URL, getAuthHeaders } from '../config/api';
 import {
   getStoredRegistrations,
   getStoredOrganizedEvents,
@@ -59,7 +59,9 @@ export default function Dashboard({ currentUser }) {
   const fetchData = async () => {
     try {
       // 1. Fetch user registered tickets
-      const regRes = await fetch(`${API_BASE_URL}/api/events/user/${encodeURIComponent(userId)}/registrations`);
+      const regRes = await fetch(`${API_BASE_URL}/api/events/user/${encodeURIComponent(userId)}/registrations`, {
+        headers: getAuthHeaders()
+      });
       const regData = await regRes.json();
       if (regRes.ok && regData.success && Array.isArray(regData.data)) {
         for (const r of regData.data) {
@@ -99,7 +101,8 @@ export default function Dashboard({ currentUser }) {
 
     try {
       await fetch(`${API_BASE_URL}/api/events/user/${encodeURIComponent(userId)}/registrations/${regId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: getAuthHeaders()
       });
     } catch {
       // ignore API failure, remove locally
@@ -114,7 +117,8 @@ export default function Dashboard({ currentUser }) {
 
     try {
       await fetch(`${API_BASE_URL}/api/events/${encodeURIComponent(eventId)}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: getAuthHeaders()
       });
     } catch {
       // ignore API failure, remove locally

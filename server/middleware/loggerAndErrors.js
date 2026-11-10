@@ -1,31 +1,30 @@
-// Middleware: Request Logger, Request Validation, and Server-Side Error Handling
+// Production-Ready Middleware: Request Logger, Input Validator, and Centralized Error Handling
 
 // 1. Custom HTTP Request Logger Middleware
 export const requestLogger = (req, res, next) => {
-  const timestamp = new Date().toISOString();
-  console.log(`[${timestamp}] ${req.method} ${req.originalUrl}`);
+  const start = Date.now();
+  const method = req.method;
+  const url = req.originalUrl || req.url;
+  const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    const statusCode = res.statusCode;
+    const color = statusCode >= 500 ? '🔴' : statusCode >= 400 ? '🟡' : '🟢';
+
+    if (process.env.NODE_ENV !== 'test') {
+      console.log(`${color} [${new Date().toISOString()}] ${method} ${url} ${statusCode} - ${duration}ms (IP: ${ip})`);
+    }
+  });
+
   next();
 };
 
-// 2. Custom Input Validation Middleware (Applies strictly to Event creation/update routes)
+// 2. Custom Event Input Validation Middleware (Runs before event create/update routes)
 export const validateEventInput = (req, res, next) => {
-  // Exclude attendee roster mutations, ticket actions, check-in, and seat holds
-  const isSubResource = 
-    req.originalUrl.includes('/attendees') ||
-    req.originalUrl.includes('/register') ||
-    req.originalUrl.includes('/registrations') ||
-    req.originalUrl.includes('/reserve') ||
-    req.originalUrl.includes('/release-reservation') ||
-    req.originalUrl.includes('/check-in') ||
-    req.originalUrl.includes('/live-stream') ||
-    req.originalUrl.includes('/ticket-pdf');
+  if (req.method === 'POST') {
+    const { title, city, category, capacity, price } = req.body;
 
-  if (isSubResource) {
-    return next();
-  }
-
-  if (req.method === 'POST' || req.method === 'PUT') {
-    const { title, city, date } = req.body;
     if (!title || typeof title !== 'string' || title.trim() === '') {
       return res.status(400).json({
         status: 400,
@@ -33,27 +32,57 @@ export const validateEventInput = (req, res, next) => {
         message: 'Validation Failed: "title" is required and must be a non-empty string.'
       });
     }
+
     if (!city || typeof city !== 'string' || city.trim() === '') {
       return res.status(400).json({
         status: 400,
         error: 'Bad Request',
-        message: 'Validation Failed: "city" is required.'
+        message: 'Validation Failed: "city" is required and must be a non-empty string.'
       });
     }
+
+    if (capacity !== undefined) {
+      const capNum = Number(capacity);
+      if (isNaN(capNum) || capNum <= 0) {
+        return res.status(400).json({
+          status: 400,
+          error: 'Bad Request',
+          message: 'Validation Failed: "capacity" must be a positive number.'
+        });
+      }
+    }
+
+    if (price !== undefined) {
+      const priceNum = Number(price);
+      if (isNaN(priceNum) || priceNum < 0) {
+        return res.status(400).json({
+          status: 400,
+          error: 'Bad Request',
+          message: 'Validation Failed: "price" cannot be negative.'
+        });
+      }
+    }
   }
+
   next();
 };
 
-// 3. Centralized Server-Side Error Handling Middleware
+// 3. Centralized Server-Side Error Handling Middleware (Safe for Production)
 export const errorHandler = (err, req, res, next) => {
-  console.error('💥 Centralized Error Handler Caught Error:', err.message || err);
+  const isDev = process.env.NODE_ENV === 'development';
+  if (isDev) {
+    console.error('💥 Error Handler:', err.message || err);
+  }
 
-  const statusCode = err.statusCode || res.statusCode || 500;
-  
+  const statusCode = err.statusCode || (res.statusCode >= 400 ? res.statusCode : 500);
+  const isProduction = process.env.NODE_ENV === 'production';
+
   res.status(statusCode).json({
     status: statusCode,
     error: err.name || 'InternalServerError',
-    message: err.message || 'An unexpected error occurred on the server.',
-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    message: isProduction && statusCode === 500
+      ? 'An unexpected error occurred on the server.'
+      : (err.message || 'An unexpected server error occurred.'),
+    stack: isDev ? err.stack : undefined
   });
 };
